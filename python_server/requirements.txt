@@ -1,0 +1,4 @@
+gymnasium>=0.29.1
+highway-env>=1.8.2
+pyzmq>=25.1.2
+numpy>=1.26.0
