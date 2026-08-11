@@ -1,0 +1,29 @@
+# --- Virtual environment Python ---
+python_server/venv/
+venv/
+*/venv/
+.venv/
+
+# --- Python cache/bytecode ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+*.egg
+
+# --- File di build C++ / CMake ---
+build/
+cmake-build-*/
+*.o
+*.obj
+*.exe
+*.out
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# --- Editor / IDE ---
+.vscode/
