@@ -3,21 +3,24 @@
 #include <vector>
 #include <random>
 
+
 void SensorThread::close()
 {
-    mMutex.lock();
-    mRunning = false;
-    mMutex.unlock();
+    mRunning.store(false);
 }
 
 void SensorThread::start()
 {
-    mMutex.lock();
-    mRunning = true;
-    mMutex.unlock();
+    mRunning.store(true);
 
     std::thread t(&SensorThread::run, this);
-    t.join();
+    mThread = t;
+}
+
+void SensorThread::join()
+{
+    mThread.join();
+    std::thread t(&SensorThread::run, this);
 }
 
 struct VehicleAttr
@@ -30,9 +33,10 @@ public:
     double mVy;
 };
 
-double calculateDistanceToLeader(std::vector<VehicleAttr> &aVectorVehicleAttr)
+std::pair<double, double> calculateVelocityAndDistanceToLeader(std::vector<VehicleAttr> &aVectorVehicleAttr)
 {
     double minDistanceToLeader = std::numeric_limits<double>::max();
+    double velocityLeader;
     double yEgoPos = aVectorVehicleAttr.at(0).mY;
 
     for (int i = 1; i < aVectorVehicleAttr.size(); i++) // exclude ego pos
@@ -42,23 +46,26 @@ double calculateDistanceToLeader(std::vector<VehicleAttr> &aVectorVehicleAttr)
         if ((actualVehicle.mY == yEgoPos) && (actualVehicle.mX < minDistanceToLeader) && (actualVehicle.mPresence > 0.5))
         {
             minDistanceToLeader = actualVehicle.mX;
+            velocityLeader = actualVehicle.mVx;
         }
     }
-    return minDistanceToLeader;
+    if (minDistanceToLeader == std::numeric_limits<double>::max())
+    {
+        return std::pair<double, double>(0.0, 0.0);
+    }
+    return std::pair<double, double>(minDistanceToLeader, velocityLeader);
 }
 
 void SensorThread::run()
 {
-    while (mRunning)
+    while (mRunning.load())
     {
         mStartTime = std::chrono::high_resolution_clock::now();
-        // START function
+        // START of the function
 
-        std::time_t start_time = std::chrono::system_clock::to_time_t(mStartTime);
-        std::cout << "Start Time: " << std::ctime(&start_time) << std::endl;
+        mSharedData.mMutex.lock();
 
-        static double last_accel = 0.0;
-        json resp = mClient.sendComandAndRecive({{"cmd", "step"}, {"accel", last_accel}});
+        json resp = mClient.sendComandAndRecive({{"cmd", "step"}, {"accel", mSharedData.mAcceletation}});
 
         // fill the array with the Vehicles Attributes
         std::vector<VehicleAttr> vVehicleAttr;
@@ -73,16 +80,32 @@ void SensorThread::run()
             vVehicleAttr.push_back(vehicleAttr);
         }
 
+        // Add noise to the value
         std::random_device rd;
         std::mt19937 generator(rd());
         std::normal_distribution<double> dist(0.0, 0.3);
 
         double egoSpeed = vVehicleAttr.at(0).mVx + dist(generator);
-        double distanceToLeader = calculateDistanceToLeader(vVehicleAttr) + dist(generator);
+        std::pair<double, double> distAndVelocityLeader = calculateVelocityAndDistanceToLeader(vVehicleAttr);
 
-        mSharedData.setAll(egoSpeed, resp["terminated"], resp["truncated"], distanceToLeader);
+        if (distAndVelocityLeader.first != 0)
+        {
+            distAndVelocityLeader.first += dist(generator);
+            distAndVelocityLeader.second += dist(generator);
+        }
 
-        // END function
+        mSharedData.setAll(egoSpeed, resp["terminated"], resp["truncated"], distAndVelocityLeader.first, distAndVelocityLeader.second);
+
+        for (int i = 0; i < vVehicleAttr.size(); i++)
+        {
+            std::cout << "veicolo " << i << "-> v: " << vVehicleAttr.at(i).mVx << " distance: " << vVehicleAttr.at(i).mX << std::endl;
+        }
+
+        std::cout << std::endl;
+
+        mSharedData.mMutex.unlock();
+
+        // END of the function
         mEndTime = std::chrono::high_resolution_clock::now();
 
         auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(mEndTime - mStartTime);
@@ -91,10 +114,6 @@ void SensorThread::run()
         if (elapsed < period)
         {
             std::this_thread::sleep_for(period - elapsed);
-        }
-        else
-        {
-            std::cout << "DEADLINE MISSSS";
         }
     }
 }
