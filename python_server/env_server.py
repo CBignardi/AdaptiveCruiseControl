@@ -40,7 +40,6 @@ while True:
         obs, reward, terminated, truncated, info = env.step([accel])
         socket.send_json({
             "obs": obs.tolist(),
-            "ego_speed": float(obs[0][3]),  # vx assoluta ego (riga 0)
             "terminated": bool(terminated),
             "truncated": bool(truncated),
         })
