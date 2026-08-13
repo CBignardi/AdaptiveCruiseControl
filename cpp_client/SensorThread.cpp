@@ -3,7 +3,6 @@
 #include <vector>
 #include <random>
 
-
 void SensorThread::close()
 {
     mRunning.store(false);
@@ -12,16 +11,18 @@ void SensorThread::close()
 void SensorThread::start()
 {
     mRunning.store(true);
-
-    std::thread t(&SensorThread::run, this);
-    mThread = t;
 }
 
 void SensorThread::join()
 {
     mThread.join();
-    std::thread t(&SensorThread::run, this);
 }
+
+struct LeaderDistanceVelocity
+{
+    double mDistanceToLeader = 0;
+    double mVelocity = 0;
+};
 
 struct VehicleAttr
 {
@@ -33,27 +34,38 @@ public:
     double mVy;
 };
 
-std::pair<double, double> calculateVelocityAndDistanceToLeader(std::vector<VehicleAttr> &aVectorVehicleAttr)
+LeaderDistanceVelocity calculateVelocityAndDistanceToLeader(std::vector<VehicleAttr> &aVectorVehicleAttr)
 {
     double minDistanceToLeader = std::numeric_limits<double>::max();
     double velocityLeader;
-    double yEgoPos = aVectorVehicleAttr.at(0).mY;
+    double egoYPos = aVectorVehicleAttr.at(0).mY;
+    double egoXPos = aVectorVehicleAttr.at(0).mX;
 
     for (int i = 1; i < aVectorVehicleAttr.size(); i++) // exclude ego pos
     {
         auto actualVehicle = aVectorVehicleAttr.at(i);
 
-        if ((actualVehicle.mY == yEgoPos) && (actualVehicle.mX < minDistanceToLeader) && (actualVehicle.mPresence > 0.5))
+        // if the vehicle isn't in my lane OR the presence is lower than 0.5, we SKIP this vehicle
+        if ((std::round(actualVehicle.mY) != egoYPos) && (actualVehicle.mPresence < 0.5))
         {
-            minDistanceToLeader = actualVehicle.mX;
+            continue;
+        }
+
+        if (((actualVehicle.mX - egoXPos) < minDistanceToLeader))
+        {
+            minDistanceToLeader = actualVehicle.mX - egoXPos;
             velocityLeader = actualVehicle.mVx;
         }
     }
-    if (minDistanceToLeader == std::numeric_limits<double>::max())
+
+    LeaderDistanceVelocity retValue;
+    if (minDistanceToLeader != std::numeric_limits<double>::max())
     {
-        return std::pair<double, double>(0.0, 0.0);
+        retValue.mDistanceToLeader = minDistanceToLeader;
+        retValue.mVelocity = velocityLeader;
     }
-    return std::pair<double, double>(minDistanceToLeader, velocityLeader);
+
+    return retValue;
 }
 
 void SensorThread::run()
@@ -64,8 +76,10 @@ void SensorThread::run()
         // START of the function
 
         mSharedData.mMutex.lock();
+        double acceleration = mSharedData.mAcceletation;
+        mSharedData.mMutex.unlock();
 
-        json resp = mClient.sendComandAndRecive({{"cmd", "step"}, {"accel", mSharedData.mAcceletation}});
+        json resp = mClient.sendComandAndRecive({{"cmd", "step"}, {"accel", acceleration}});
 
         // fill the array with the Vehicles Attributes
         std::vector<VehicleAttr> vVehicleAttr;
@@ -85,23 +99,24 @@ void SensorThread::run()
         std::mt19937 generator(rd());
         std::normal_distribution<double> dist(0.0, 0.3);
 
-        double egoSpeed = vVehicleAttr.at(0).mVx + dist(generator);
-        std::pair<double, double> distAndVelocityLeader = calculateVelocityAndDistanceToLeader(vVehicleAttr);
+        double egoSpeed = vVehicleAttr.at(0).mVx;
+        LeaderDistanceVelocity leaderDistanceVelocity = calculateVelocityAndDistanceToLeader(vVehicleAttr);
 
-        if (distAndVelocityLeader.first != 0)
+        if (leaderDistanceVelocity.mDistanceToLeader != 0)
         {
-            distAndVelocityLeader.first += dist(generator);
-            distAndVelocityLeader.second += dist(generator);
+            leaderDistanceVelocity.mDistanceToLeader += dist(generator);
+            leaderDistanceVelocity.mVelocity += dist(generator);
         }
 
-        mSharedData.setAll(egoSpeed, resp["terminated"], resp["truncated"], distAndVelocityLeader.first, distAndVelocityLeader.second);
+        mSharedData.mMutex.lock();
+
+        mSharedData.setAll(egoSpeed, resp["terminated"], resp["truncated"], leaderDistanceVelocity.mDistanceToLeader, leaderDistanceVelocity.mVelocity);
 
         for (int i = 0; i < vVehicleAttr.size(); i++)
         {
-            std::cout << "veicolo " << i << "-> v: " << vVehicleAttr.at(i).mVx << " distance: " << vVehicleAttr.at(i).mX << std::endl;
+            mSharedData.os << "veicolo " << i << "-> v: " << vVehicleAttr.at(i).mVx << " distance: " << vVehicleAttr.at(i).mX << " y: " << vVehicleAttr.at(i).mY << std::endl;
         }
-
-        std::cout << std::endl;
+        mSharedData.os << std::endl;
 
         mSharedData.mMutex.unlock();
 

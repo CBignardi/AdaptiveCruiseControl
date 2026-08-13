@@ -6,6 +6,8 @@
 #include <iostream>
 #include <algorithm>
 
+#include <fstream>
+
 using json = nlohmann::json;
 
 // size_t globalId = 0;
@@ -34,6 +36,8 @@ public:
         mDistanceToLeader = aDistanceToLeader;
         mVelocityLeader = aVelocityLeader;
     }
+
+    std::ofstream os{"log.txt", std::ios::binary};
 };
 
 class EnvClient

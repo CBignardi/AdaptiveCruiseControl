@@ -11,9 +11,10 @@ env.unwrapped.config.update({
     "observation": {
         "type": "Kinematics", "vehicles_count": 5,
         "features": ["presence", "x", "y", "vx", "vy"],
-        "absolute": False, "normalize": False,
+        "absolute": True, "normalize": False,
     },
     "action": {"type": "ContinuousAction", "longitudinal": True, "lateral": False},
+    "controlled_vehicles": 1,
 })
 
 obs, info = env.reset()
@@ -37,6 +38,7 @@ while True:
         socket.send_json({"obs": obs.tolist()})
     elif msg["cmd"] == "step":
         accel = msg["accel"]  # float, es. -3.0..3.0 m/s^2
+        print("accelerazione: ", accel, type(accel))
         obs, reward, terminated, truncated, info = env.step([accel])
         socket.send_json({
             "obs": obs.tolist(),
