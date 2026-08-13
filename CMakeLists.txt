@@ -12,6 +12,7 @@ include_directories(${CMAKE_SOURCE_DIR}/cpp_client/include)
 set(SOURCES
     cpp_client/main.cpp
     cpp_client/SensorThread.cpp
+    cpp_client/ControllerThread.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
