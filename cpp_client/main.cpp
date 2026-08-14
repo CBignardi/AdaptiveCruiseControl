@@ -4,6 +4,7 @@
 #include "utils.hpp"
 #include "SensorThread.hpp"
 #include "ControllerThread.hpp"
+#include "SafteyThread.hpp"
 
 int main(void)
 {
@@ -18,12 +19,14 @@ int main(void)
     sensorThread.start();
 
     ControllerThread controllerThread(sharedData);
-    controllerThread.start(20, 25); // 20 meters, 25 m/s
+    controllerThread.start(25); // 25 m/s
 
-    // priprità 20 per il controllore;
+    SafteyThread safteyThread(sharedData);
+    safteyThread.start();
 
     sensorThread.join();
     controllerThread.join();
+    safteyThread.join();
 
     return EXIT_SUCCESS;
 }

@@ -1,6 +1,7 @@
 #include "ControllerThread.hpp"
 #include <limits>
 
+// Parameters
 double KP_CRUICE = 0.02;
 double KP1_GAP = 0.02;
 double KP2_GAP = 0.05;
@@ -11,7 +12,6 @@ double MAX_ACELERATION = 2.0;   // m/s^2
 
 ControllerThread::ControllerThread(SharedData &aSharedData) : mSharedData(aSharedData), mThread(&ControllerThread::run, this)
 {
-    mFreq = 10; // Hz
     sched_param sch;
     sch.sched_priority = 40;
     int result = pthread_setschedparam(mThread.native_handle(), SCHED_FIFO, &sch);
@@ -30,9 +30,8 @@ void ControllerThread::close()
     mRunning.store(false);
 }
 
-void ControllerThread::start(double aDist, double aVelocity)
+void ControllerThread::start(double aVelocity)
 {
-    mDist = aDist;
     mVelocity = aVelocity;
     mRunning.store(true);
 }
@@ -44,18 +43,25 @@ void ControllerThread::join()
 
 void ControllerThread::run()
 {
+
     while (mRunning.load())
     {
+        LogData logData;
+
         mStartTime = std::chrono::high_resolution_clock::now();
         // START of the function
 
+        // std::cout << "Prima di lock ctrl\n";
+
         // Save the values in local variables
-        mSharedData.mMutex.lock();
-        size_t actualId = mSharedData.mId;
-        double distanceToLeader = mSharedData.mDistanceToLeader;
-        double velocityLeader = mSharedData.mVelocityLeader;
-        double egoSpeed = mSharedData.mEgoSpeed;
-        mSharedData.mMutex.unlock();
+        mSharedData.mMutexSim.lock();
+        size_t actualId = mSharedData.mSimData.mId;
+        double distanceToLeader = mSharedData.mSimData.mDistanceToLeader;
+        double velocityLeader = mSharedData.mSimData.mVelocityLeader;
+        double egoSpeed = mSharedData.mSimData.mEgoSpeed;
+        mSharedData.mMutexSim.unlock();
+
+        // std::cout << "Dopo di lock ctrl\n";
 
         if (actualId > mLastId)
         {
@@ -66,16 +72,18 @@ void ControllerThread::run()
             bool hasLeader = (distanceToLeader > 0);
             double safteyGap = MIN_GAP + TIME_GAP * egoSpeed;
 
-            bool state = false;
+            std::string state;
 
             if (!hasLeader || distanceToLeader > (safteyGap * 1.5))
             { // Normal cruice control
-                state = false;
+                state = "Cruise";
+
                 acceleration = KP_CRUICE * (mVelocity - egoSpeed);
             }
             else
             { // Car in front, Gap cruice control
-                state = true;
+                state = "Gap";
+
                 double gapError = distanceToLeader - safteyGap;
                 double speedDiff = velocityLeader - egoSpeed;
 
@@ -89,26 +97,29 @@ void ControllerThread::run()
 
             acceleration = std::clamp(acceleration, MAX_DECELERATION, MAX_ACELERATION);
 
-            mSharedData.mMutex.lock();
+            mSharedData.mMutexSim.lock();
             mSharedData.mAcceletation = acceleration;
-            mSharedData.mMutex.unlock();
+            mSharedData.mMutexSim.unlock();
 
-            mSharedData.os << "acceleration: " << acceleration << " egoSpeed: " << egoSpeed << " velocityLeader: " << velocityLeader << " mVelocity: " << mVelocity << " distanceToLeader: " << distanceToLeader << "  desiredGap: " << safteyGap << "  state: " << state << std::endl;
-            mSharedData.os << std::endl;
-
-            // std::cout << "egoSpeed: " << egoSpeed << " leaderSpeed: " << velocityLeader << " distToLeader: " << distanceToLeader << " desiredGap: " << safteyGap << " state: " << state << std::endl;
-            // std::cout << std::endl;
+            logData.setParams(acceleration, egoSpeed, velocityLeader, distanceToLeader, safteyGap, state);
         }
 
         // END of the function
         mEndTime = std::chrono::high_resolution_clock::now();
 
-        auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(mEndTime - mStartTime);
-        std::chrono::duration<double> period(1.0 / mFreq);
+        std::cout << "contr\n";
 
-        if (elapsed < period)
+        logData.setTime(mStartTime, mEndTime);
+
+        mSharedData.mMutexLog.lock();
+        mSharedData.mVecControl.push_back(logData);
+        mSharedData.mMutexLog.unlock();
+
+        auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(mEndTime - mStartTime);
+
+        if (elapsed < mPeriod)
         {
-            std::this_thread::sleep_for(period - elapsed);
+            std::this_thread::sleep_for(mPeriod - elapsed);
         }
     }
 }

@@ -27,8 +27,8 @@ private:
     EnvClient &mClient;
     time_type mStartTime;
     time_type mEndTime;
+    std::chrono::duration<double> mPeriod{1.0 / 25}; // 25Hz freq
 
-    std::mutex mMutex;
     std::thread mThread;
 
     void run();

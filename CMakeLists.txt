@@ -13,6 +13,7 @@ set(SOURCES
     cpp_client/main.cpp
     cpp_client/SensorThread.cpp
     cpp_client/ControllerThread.cpp
+    cpp_client/SafteyThread.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})

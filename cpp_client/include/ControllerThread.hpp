@@ -16,23 +16,21 @@ public:
 
     void close();
 
-    void start(double aDist, double aVelocity);
+    void start(double aVelocity);
 
     void join();
 
 private:
-    double mFreq;
     std::atomic<bool> mRunning{false};
     SharedData &mSharedData;
     time_type mStartTime;
     time_type mEndTime;
+    std::chrono::duration<double> mPeriod{1.0 / 10}; // 10Hz freq
 
     size_t mLastId;
 
-    std::mutex mMutex;
     std::thread mThread;
 
-    double mDist;
     double mVelocity;
 
     void run();

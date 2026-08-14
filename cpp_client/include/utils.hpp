@@ -5,39 +5,87 @@
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include <algorithm>
+#include <vector>
 
 #include <fstream>
 
 using json = nlohmann::json;
+using time_type = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
-// size_t globalId = 0;
-
-struct SharedData
+struct SimData
 {
-public:
-    SharedData() {}
-
     size_t mId = 0;
     double mEgoSpeed;
     bool mTerminated;
     bool mTruncated;
     double mDistanceToLeader;
     double mVelocityLeader;
+};
 
-    double mAcceletation = 0.0;
-    std::mutex mMutex;
+struct LogData
+{
+    time_type mStartTime;
+    time_type mEndTime;
 
-    void setAll(double aEgoSpeed, bool aTerminated, bool aTruncated, double aDistanceToLeader, double aVelocityLeader)
+    double mAcceleration;
+    double mEgoSpeed;
+    double mLeaderSpeed;
+    double mDistanceToLeader;
+    double mSafteyDistance;
+    std::string mState;
+
+    void setAll(time_type aStartTime, time_type aEndTime, double aAcceleration, double aEgoSpeed, double aLeaderSpeed, double aDistanceToLeader, double aSafteyDistance, std::string aState)
     {
-        mId++;
+        mStartTime = aStartTime;
+        mEndTime = aEndTime;
+        mAcceleration = aAcceleration;
         mEgoSpeed = aEgoSpeed;
-        mTerminated = aTerminated;
-        mTruncated = aTruncated;
+        mLeaderSpeed = aLeaderSpeed;
         mDistanceToLeader = aDistanceToLeader;
-        mVelocityLeader = aVelocityLeader;
+        mSafteyDistance = aSafteyDistance;
+        mState = aState;
     }
 
-    std::ofstream os{"log.txt", std::ios::binary};
+    void setParams(double aAcceleration, double aEgoSpeed, double aLeaderSpeed, double aDistanceToLeader, double aSafteyDistance, std::string aState)
+    {
+        mAcceleration = aAcceleration;
+        mEgoSpeed = aEgoSpeed;
+        mLeaderSpeed = aLeaderSpeed;
+        mDistanceToLeader = aDistanceToLeader;
+        mSafteyDistance = aSafteyDistance;
+        mState = aState;
+    }
+
+    void setTime(time_type aStartTime, time_type aEndTime)
+    {
+        mStartTime = aStartTime;
+        mEndTime = aEndTime;
+    }
+};
+
+struct SharedData
+{
+public:
+    SharedData() {}
+
+    // Simulator Data
+    std::mutex mMutexSim;
+    SimData mSimData;
+    double mAcceletation = 0.0;
+    void setAll(double aEgoSpeed, bool aTerminated, bool aTruncated, double aDistanceToLeader, double aVelocityLeader)
+    {
+        mSimData.mId++;
+        mSimData.mEgoSpeed = aEgoSpeed;
+        mSimData.mTerminated = aTerminated;
+        mSimData.mTruncated = aTruncated;
+        mSimData.mDistanceToLeader = aDistanceToLeader;
+        mSimData.mVelocityLeader = aVelocityLeader;
+    }
+
+    // Log Data
+    std::mutex mMutexLog;
+    std::vector<LogData> mVecSensor;
+    std::vector<LogData> mVecControl;
 };
 
 class EnvClient

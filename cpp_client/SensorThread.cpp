@@ -5,7 +5,6 @@
 
 SensorThread::SensorThread(SharedData &aSharedData, EnvClient &aClient) : mSharedData(aSharedData), mClient(aClient), mThread(&SensorThread::run, this)
 {
-    mFreq = 25.0; // Hz
     sched_param sch;
     sch.sched_priority = 99;
     int policy = SCHED_FIFO;
@@ -73,10 +72,10 @@ LeaderDistanceVelocity calculateVelocityAndDistanceToLeader(std::vector<VehicleA
             minDistanceToLeader = actualVehicle.mX - egoXPos;
             velocityLeader = actualVehicle.mVx;
 
-            if (minDistanceToLeader < 0)
-            {
-                std::cout << "distToLeader negativa: " << minDistanceToLeader << " veicolo: " << i << " xPos: " << actualVehicle.mX << " egoPos: " << egoXPos << std::endl;
-            }
+            // if (minDistanceToLeader < 0)
+            // {
+            //     // std::cout << "distToLeader negativa: " << minDistanceToLeader << " veicolo: " << i << " xPos: " << actualVehicle.mX << " egoPos: " << egoXPos << std::endl;
+            // }
         }
     }
 
@@ -97,9 +96,13 @@ void SensorThread::run()
         mStartTime = std::chrono::high_resolution_clock::now();
         // START of the function
 
-        mSharedData.mMutex.lock();
+        std::cout << "Prima di lock sens\n";
+
+        mSharedData.mMutexSim.lock();
         double acceleration = mSharedData.mAcceletation;
-        mSharedData.mMutex.unlock();
+        mSharedData.mMutexSim.unlock();
+
+        std::cout << "dopo di lock sens\n";
 
         json resp = mClient.sendComandAndRecive({{"cmd", "step"}, {"accel", acceleration}});
 
@@ -131,27 +134,31 @@ void SensorThread::run()
             // leaderDistanceVelocity.mVelocity += dist(generator);
         }
 
-        mSharedData.mMutex.lock();
+        
+
+        mSharedData.mMutexSim.lock();
 
         mSharedData.setAll(egoSpeed, resp["terminated"], resp["truncated"], leaderDistanceVelocity.mDistanceToLeader, leaderDistanceVelocity.mVelocity);
 
-        for (int i = 0; i < vVehicleAttr.size(); i++)
-        {
-            mSharedData.os << "veicolo " << i << "-> v: " << vVehicleAttr.at(i).mVx << " distance: " << vVehicleAttr.at(i).mX << " y: " << vVehicleAttr.at(i).mY << std::endl;
-        }
-        mSharedData.os << std::endl;
-
-        mSharedData.mMutex.unlock();
+        mSharedData.mMutexSim.unlock();
 
         // END of the function
         mEndTime = std::chrono::high_resolution_clock::now();
 
-        auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(mEndTime - mStartTime);
-        std::chrono::duration<double> period(1.0 / mFreq);
+        std::cout << "sens\n";
 
-        if (elapsed < period)
+        LogData logData;
+        logData.setTime(mStartTime, mEndTime);
+
+        mSharedData.mMutexLog.lock();
+        mSharedData.mVecSensor.push_back(logData);
+        mSharedData.mMutexLog.unlock();
+
+        auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(mEndTime - mStartTime);
+
+        if (elapsed < mPeriod)
         {
-            std::this_thread::sleep_for(period - elapsed);
+            std::this_thread::sleep_for(mPeriod - elapsed);
         }
     }
 }
