@@ -9,7 +9,7 @@ socket.bind("tcp://*:5555")
 env = gym.make("highway-v0", render_mode="human")
 env.unwrapped.config.update({
     "observation": {
-        "type": "Kinematics", "vehicles_count": 5,
+        "type": "Kinematics", "vehicles_count": 6,
         "features": ["presence", "x", "y", "vx", "vy"],
         "absolute": True, "normalize": False,
     },
@@ -38,7 +38,7 @@ while True:
         socket.send_json({"obs": obs.tolist()})
     elif msg["cmd"] == "step":
         accel = msg["accel"]  # float, es. -3.0..3.0 m/s^2
-        print("accelerazione: ", accel, type(accel))
+        print("accelerazione: ", accel)
         obs, reward, terminated, truncated, info = env.step([accel])
         socket.send_json({
             "obs": obs.tolist(),

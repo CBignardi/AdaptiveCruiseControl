@@ -3,6 +3,22 @@
 #include <vector>
 #include <random>
 
+SensorThread::SensorThread(SharedData &aSharedData, EnvClient &aClient) : mSharedData(aSharedData), mClient(aClient), mThread(&SensorThread::run, this)
+{
+    mFreq = 25.0; // Hz
+    sched_param sch;
+    sch.sched_priority = 99;
+    int policy = SCHED_FIFO;
+    int result = pthread_setschedparam(mThread.native_handle(), policy, &sch);
+    if (result != 0)
+    {
+        throw std::runtime_error("Error scheduling parameter. " + std::string(strerror(result)));
+    }
+
+    pthread_getschedparam(mThread.native_handle(), &policy, &sch);
+    std::cout << "ThreadSensor" << " is executing at priority " << sch.sched_priority << std::endl;
+}
+
 void SensorThread::close()
 {
     mRunning.store(false);
@@ -46,15 +62,21 @@ LeaderDistanceVelocity calculateVelocityAndDistanceToLeader(std::vector<VehicleA
         auto actualVehicle = aVectorVehicleAttr.at(i);
 
         // if the vehicle isn't in my lane OR the presence is lower than 0.5, we SKIP this vehicle
-        if ((std::round(actualVehicle.mY) != egoYPos) && (actualVehicle.mPresence < 0.5))
+        if ((std::round(actualVehicle.mY) != egoYPos) || (actualVehicle.mPresence < 0.5))
         {
             continue;
         }
 
         if (((actualVehicle.mX - egoXPos) < minDistanceToLeader))
         {
+
             minDistanceToLeader = actualVehicle.mX - egoXPos;
             velocityLeader = actualVehicle.mVx;
+
+            if (minDistanceToLeader < 0)
+            {
+                std::cout << "distToLeader negativa: " << minDistanceToLeader << " veicolo: " << i << " xPos: " << actualVehicle.mX << " egoPos: " << egoXPos << std::endl;
+            }
         }
     }
 
@@ -97,15 +119,16 @@ void SensorThread::run()
         // Add noise to the value
         std::random_device rd;
         std::mt19937 generator(rd());
-        std::normal_distribution<double> dist(0.0, 0.3);
+        std::normal_distribution<double> dist(0.0, 0.1);
 
         double egoSpeed = vVehicleAttr.at(0).mVx;
+        // std::cout << "egoSpeed: " << egoSpeed << std::endl;
         LeaderDistanceVelocity leaderDistanceVelocity = calculateVelocityAndDistanceToLeader(vVehicleAttr);
 
         if (leaderDistanceVelocity.mDistanceToLeader != 0)
         {
-            leaderDistanceVelocity.mDistanceToLeader += dist(generator);
-            leaderDistanceVelocity.mVelocity += dist(generator);
+            // leaderDistanceVelocity.mDistanceToLeader += dist(generator);
+            // leaderDistanceVelocity.mVelocity += dist(generator);
         }
 
         mSharedData.mMutex.lock();

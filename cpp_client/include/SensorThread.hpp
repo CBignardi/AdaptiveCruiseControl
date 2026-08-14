@@ -5,7 +5,6 @@
 #include <chrono>
 #include <atomic>
 
-
 #include "utils.hpp"
 
 using time_type = std::chrono::time_point<std::chrono::high_resolution_clock>;
@@ -13,7 +12,7 @@ using time_type = std::chrono::time_point<std::chrono::high_resolution_clock>;
 class SensorThread
 {
 public:
-    SensorThread(double aFreq, SharedData &aSharedData, EnvClient& aClient) : mFreq(aFreq), mSharedData(aSharedData), mClient(aClient), mThread(&SensorThread::run, this) {}
+    SensorThread(SharedData &aSharedData, EnvClient &aClient);
 
     void close();
 

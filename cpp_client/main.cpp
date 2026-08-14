@@ -14,13 +14,13 @@ int main(void)
 
     json resp = client.sendComandAndRecive({{"cmd", "reset"}});
 
-    SensorThread sensorThread(25.0, sharedData, client);
-
+    SensorThread sensorThread(sharedData, client);
     sensorThread.start();
 
-    ControllerThread controllerThread(10.0, sharedData);
-
+    ControllerThread controllerThread(sharedData);
     controllerThread.start(20, 25); // 20 meters, 25 m/s
+
+    // priprità 20 per il controllore;
 
     sensorThread.join();
     controllerThread.join();
