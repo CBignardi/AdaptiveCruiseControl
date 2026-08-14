@@ -12,7 +12,7 @@ using time_type = std::chrono::time_point<std::chrono::high_resolution_clock>;
 class ControllerThread
 {
 public:
-    ControllerThread(double aFreq, SharedData &aSharedData) : mFreq(aFreq), mSharedData(aSharedData), mThread(&ControllerThread::run, this) {}
+    ControllerThread(SharedData &aSharedData);
 
     void close();
 

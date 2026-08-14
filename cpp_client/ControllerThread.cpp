@@ -1,8 +1,29 @@
 #include "ControllerThread.hpp"
+#include <limits>
 
-double Kp = 0.02;
-double Kd = -0.35;
-double Kp_velocity = 0.02;
+double KP_CRUICE = 0.02;
+double KP1_GAP = 0.02;
+double KP2_GAP = 0.05;
+double MIN_GAP = 5.0;           // meters
+double TIME_GAP = 1.5;          // seconds
+double MAX_DECELERATION = -4.0; // m/s^2
+double MAX_ACELERATION = 2.0;   // m/s^2
+
+ControllerThread::ControllerThread(SharedData &aSharedData) : mSharedData(aSharedData), mThread(&ControllerThread::run, this)
+{
+    mFreq = 10; // Hz
+    sched_param sch;
+    sch.sched_priority = 40;
+    int result = pthread_setschedparam(mThread.native_handle(), SCHED_FIFO, &sch);
+    if (result != 0)
+    {
+        throw std::runtime_error("Error scheduling parameter. " + std::string(strerror(result)));
+    }
+
+    int policy;
+    pthread_getschedparam(mThread.native_handle(), &policy, &sch);
+    std::cout << "ThreadController" << " is executing at priority " << sch.sched_priority << std::endl;
+}
 
 void ControllerThread::close()
 {
@@ -39,34 +60,44 @@ void ControllerThread::run()
         if (actualId > mLastId)
         {
             mLastId = actualId;
-            double acceleration = 0;
 
-            // Rimuovi dopo aver tolto la stampa
-            double safteyDistance;
-            double distanceToUse;
-            double diff;
+            double acceleration;
 
-            if (distanceToLeader > 0)
-            { // Has leader
-                safteyDistance = 3.0 + 0.5 * egoSpeed;
-                distanceToUse = std::max(safteyDistance, mDist);
+            bool hasLeader = (distanceToLeader > 0);
+            double safteyGap = MIN_GAP + TIME_GAP * egoSpeed;
 
-                diff = distanceToLeader - distanceToUse;
-                acceleration = Kp * diff + Kd * (velocityLeader - egoSpeed);
+            bool state = false;
+
+            if (!hasLeader || distanceToLeader > (safteyGap * 1.5))
+            { // Normal cruice control
+                state = false;
+                acceleration = KP_CRUICE * (mVelocity - egoSpeed);
             }
             else
-            { // Has NO leader
-                acceleration = Kp_velocity * (mVelocity - egoSpeed);
+            { // Car in front, Gap cruice control
+                state = true;
+                double gapError = distanceToLeader - safteyGap;
+                double speedDiff = velocityLeader - egoSpeed;
+
+                acceleration = KP1_GAP * gapError + KP2_GAP * speedDiff;
+
+                if ((egoSpeed >= mVelocity) && (acceleration > 0))
+                {
+                    acceleration = 0;
+                }
             }
 
-            acceleration = std::clamp(acceleration, -1.0, 1.0);
+            acceleration = std::clamp(acceleration, MAX_DECELERATION, MAX_ACELERATION);
 
             mSharedData.mMutex.lock();
             mSharedData.mAcceletation = acceleration;
             mSharedData.mMutex.unlock();
 
-            mSharedData.os << "accelerazione: " << acceleration << " egoSpeed: " << egoSpeed << " velocityLeader: " << velocityLeader << " distanceToLeader: " << distanceToLeader << "  safteyDist: " << safteyDistance << " distToUse: " << distanceToUse << " diff: " << diff << " HasLeader: " << (distanceToLeader > 0) << std::endl;
+            mSharedData.os << "acceleration: " << acceleration << " egoSpeed: " << egoSpeed << " velocityLeader: " << velocityLeader << " mVelocity: " << mVelocity << " distanceToLeader: " << distanceToLeader << "  desiredGap: " << safteyGap << "  state: " << state << std::endl;
             mSharedData.os << std::endl;
+
+            // std::cout << "egoSpeed: " << egoSpeed << " leaderSpeed: " << velocityLeader << " distToLeader: " << distanceToLeader << " desiredGap: " << safteyGap << " state: " << state << std::endl;
+            // std::cout << std::endl;
         }
 
         // END of the function
