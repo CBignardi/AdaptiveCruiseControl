@@ -9,6 +9,8 @@
 
 using time_type = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
+
+
 class SafteyThread
 {
 public:
@@ -19,6 +21,8 @@ public:
     void start();
 
     void join();
+
+    // void printLog();
 
 private:
     std::atomic<bool> mRunning{false};

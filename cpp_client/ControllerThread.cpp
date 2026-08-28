@@ -51,7 +51,7 @@ void ControllerThread::run()
         mStartTime = std::chrono::high_resolution_clock::now();
         // START of the function
 
-        // std::cout << "Prima di lock ctrl\n";
+        // std::cout << "contrl, prima di copiamento variabili\n";
 
         // Save the values in local variables
         mSharedData.mMutexSim.lock();
@@ -61,7 +61,7 @@ void ControllerThread::run()
         double egoSpeed = mSharedData.mSimData.mEgoSpeed;
         mSharedData.mMutexSim.unlock();
 
-        // std::cout << "Dopo di lock ctrl\n";
+        // std::cout << "contrl, dopo di copiamento variabili\n";
 
         if (actualId > mLastId)
         {
@@ -97,23 +97,27 @@ void ControllerThread::run()
 
             acceleration = std::clamp(acceleration, MAX_DECELERATION, MAX_ACELERATION);
 
+            // std::cout << "control, prima lock acc\n";
+
             mSharedData.mMutexSim.lock();
             mSharedData.mAcceletation = acceleration;
             mSharedData.mMutexSim.unlock();
+            // std::cout << "control, dopo lock acc\n";
 
-            logData.setParams(acceleration, egoSpeed, velocityLeader, distanceToLeader, safteyGap, state);
+            logData.setData(acceleration, egoSpeed, velocityLeader, distanceToLeader, safteyGap, state);
         }
 
         // END of the function
         mEndTime = std::chrono::high_resolution_clock::now();
 
-        std::cout << "contr\n";
-
         logData.setTime(mStartTime, mEndTime);
+        logData.mFullLog = true;
 
-        mSharedData.mMutexLog.lock();
-        mSharedData.mVecControl.push_back(logData);
-        mSharedData.mMutexLog.unlock();
+        // std::cout << "controller, prima pushback \n";
+
+        mSharedData.mQueueLog.pushElem(logData);
+
+        // std::cout << "controller, dopo pushback \n";
 
         auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(mEndTime - mStartTime);
 

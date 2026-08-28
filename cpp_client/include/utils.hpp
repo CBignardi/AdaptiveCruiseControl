@@ -6,6 +6,7 @@
 #include <iostream>
 #include <algorithm>
 #include <vector>
+#include <queue>
 
 #include <fstream>
 
@@ -24,6 +25,8 @@ struct SimData
 
 struct LogData
 {
+    bool mFullLog;
+
     time_type mStartTime;
     time_type mEndTime;
 
@@ -34,19 +37,20 @@ struct LogData
     double mSafteyDistance;
     std::string mState;
 
-    void setAll(time_type aStartTime, time_type aEndTime, double aAcceleration, double aEgoSpeed, double aLeaderSpeed, double aDistanceToLeader, double aSafteyDistance, std::string aState)
-    {
-        mStartTime = aStartTime;
-        mEndTime = aEndTime;
-        mAcceleration = aAcceleration;
-        mEgoSpeed = aEgoSpeed;
-        mLeaderSpeed = aLeaderSpeed;
-        mDistanceToLeader = aDistanceToLeader;
-        mSafteyDistance = aSafteyDistance;
-        mState = aState;
-    }
+    // void setAll(time_type aStartTime, time_type aEndTime, double aAcceleration, double aEgoSpeed, double aLeaderSpeed, double aDistanceToLeader, double aSafteyDistance, std::string aState)
+    // {
+    //     mStartTime = aStartTime;
+    //     mEndTime = aEndTime;
+    //     mAcceleration = aAcceleration;
+    //     mEgoSpeed = aEgoSpeed;
+    //     mLeaderSpeed = aLeaderSpeed;
+    //     mDistanceToLeader = aDistanceToLeader;
+    //     mSafteyDistance = aSafteyDistance;
+    //     mState = aState;
+    //     mFullLog = true;
+    // }
 
-    void setParams(double aAcceleration, double aEgoSpeed, double aLeaderSpeed, double aDistanceToLeader, double aSafteyDistance, std::string aState)
+    void setData(double aAcceleration, double aEgoSpeed, double aLeaderSpeed, double aDistanceToLeader, double aSafteyDistance, std::string aState)
     {
         mAcceleration = aAcceleration;
         mEgoSpeed = aEgoSpeed;
@@ -60,6 +64,44 @@ struct LogData
     {
         mStartTime = aStartTime;
         mEndTime = aEndTime;
+    }
+};
+
+struct QueueLog
+{
+    std::queue<LogData> mQueue;
+
+    std::mutex mMutex;
+
+    // bool isEmpty() { return mIndex >= mVec.size(); }
+
+    size_t size()
+    {
+        mMutex.lock();
+        auto tmp = mQueue.size();
+        mMutex.unlock();
+        return tmp;
+    }
+
+    LogData getElem()
+    {
+        mMutex.lock();
+        if (mQueue.empty())
+        {
+            mMutex.unlock();
+            throw std::runtime_error("Errore, getElem() chiamato con queue vuota");
+        }
+        auto tmp = mQueue.front();
+        mQueue.pop();
+        mMutex.unlock();
+        return tmp;
+    }
+
+    void pushElem(LogData aLogData)
+    {
+        mMutex.lock();
+        mQueue.push(aLogData);
+        mMutex.unlock();
     }
 };
 
@@ -83,9 +125,7 @@ public:
     }
 
     // Log Data
-    std::mutex mMutexLog;
-    std::vector<LogData> mVecSensor;
-    std::vector<LogData> mVecControl;
+    QueueLog mQueueLog;
 };
 
 class EnvClient

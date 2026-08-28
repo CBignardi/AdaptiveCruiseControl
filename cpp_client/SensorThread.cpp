@@ -96,13 +96,9 @@ void SensorThread::run()
         mStartTime = std::chrono::high_resolution_clock::now();
         // START of the function
 
-        std::cout << "Prima di lock sens\n";
-
         mSharedData.mMutexSim.lock();
         double acceleration = mSharedData.mAcceletation;
         mSharedData.mMutexSim.unlock();
-
-        std::cout << "dopo di lock sens\n";
 
         json resp = mClient.sendComandAndRecive({{"cmd", "step"}, {"accel", acceleration}});
 
@@ -134,8 +130,6 @@ void SensorThread::run()
             // leaderDistanceVelocity.mVelocity += dist(generator);
         }
 
-        
-
         mSharedData.mMutexSim.lock();
 
         mSharedData.setAll(egoSpeed, resp["terminated"], resp["truncated"], leaderDistanceVelocity.mDistanceToLeader, leaderDistanceVelocity.mVelocity);
@@ -145,14 +139,15 @@ void SensorThread::run()
         // END of the function
         mEndTime = std::chrono::high_resolution_clock::now();
 
-        std::cout << "sens\n";
-
         LogData logData;
         logData.setTime(mStartTime, mEndTime);
+        logData.mFullLog = false;
 
-        mSharedData.mMutexLog.lock();
-        mSharedData.mVecSensor.push_back(logData);
-        mSharedData.mMutexLog.unlock();
+        // std::cout << "sensor, prima pushback \n";
+
+        mSharedData.mQueueLog.pushElem(logData);
+
+        // std::cout << "sensor, dopo pushback \n";
 
         auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(mEndTime - mStartTime);
 
