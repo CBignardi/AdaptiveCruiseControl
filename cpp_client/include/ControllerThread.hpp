@@ -25,9 +25,7 @@ private:
     SharedData &mSharedData;
     time_type mStartTime;
     time_type mEndTime;
-    std::chrono::duration<double> mPeriod{1.0 / 10}; // 10Hz freq
-
-    size_t mLastId;
+    std::chrono::duration<double> mPeriod{1.0 / 25}; // 25Hz freq
 
     std::thread mThread;
 

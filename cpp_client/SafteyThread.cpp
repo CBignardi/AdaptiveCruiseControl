@@ -1,18 +1,7 @@
 #include "SafteyThread.hpp"
 
-SafteyThread::SafteyThread(SharedData &aSharedData) : mSharedData(aSharedData), mThread(&SafteyThread::run, this)
+SafteyThread::SafteyThread(SharedData &aSharedData) : mSharedData(aSharedData), mOsLogData("logData.txt"), mOsLogTimes("logTimes.txt"), mThread(&SafteyThread::run, this)
 {
-    sched_param sch;
-    sch.sched_priority = 20;
-    int policy = SCHED_FIFO;
-    int result = pthread_setschedparam(mThread.native_handle(), policy, &sch);
-    if (result != 0)
-    {
-        throw std::runtime_error("Error scheduling parameter. " + std::string(strerror(result)));
-    }
-
-    pthread_getschedparam(mThread.native_handle(), &policy, &sch);
-    std::cout << "ThreadSaftey" << " is executing at priority " << sch.sched_priority << std::endl;
 }
 
 void SafteyThread::close()
@@ -44,38 +33,18 @@ std::string formatTimestamp(std::chrono::time_point<std::chrono::system_clock> a
     return oss.str();
 }
 
-// void SafteyThread::printLog()
-// {
-// auto elem = aVecLog.getElem();
-
-// if (aIsSensor)
-// {
-//     std::chrono::duration<double> periodSensor(1.0 / 25);
-
-//     mOsLogTimes << "SensorThread -> duration: " << duration.count() << " period: " << periodSensor.count()
-//                 << " startTime: " << formatTimestamp(elem.mStartTime) << std::endl;
-//     if (duration > periodSensor)
-//     {
-//         // Deadline Miss
-//         std::cout << "Sensor Thread DEADLINE MISS" << std::endl;
-//     }
-// }
-// else
-// {
-//     std::chrono::duration<double> periodControl(1.0 / 10);
-
-//     mOsLogTimes << "ControlThread -> duration: " << duration.count() << " period: " << periodControl.count()
-//                 << " startTime: " << formatTimestamp(elem.mStartTime) << std::endl;
-//     if (duration > periodControl)
-//     {
-//         // Deadline Miss
-//         std::cout << "Control Thread DEADLINE MISS" << std::endl;
-//     }
-// }
-// }
-
 void SafteyThread::run()
 {
+    sched_param sch;
+    sch.sched_priority = 20;
+    int result = pthread_setschedparam(mThread.native_handle(), SCHED_FIFO, &sch);
+    if (result != 0)
+    {
+        throw std::runtime_error("Error scheduling parameter. " + std::string(strerror(result)));
+    }
+
+    std::cout << "ThreadSaftey" << " is executing at priority " << sch.sched_priority << std::endl;
+
     while (mRunning.load())
     {
         mStartTime = std::chrono::high_resolution_clock::now();
@@ -100,14 +69,19 @@ void SafteyThread::run()
 
                 // Setup some variables for the full print in LogTimes
                 name = "Control";
-                period = std::chrono::duration<double>(1.0 / 10);
+                period = std::chrono::duration<double>(1.0 / 25);
             }
             else
             { // It is not a Full log (Sensor Log)
 
                 // Setup some variables for the full print in LogTimes
                 name = "Sensor";
-                period = std::chrono::duration<double>(1.0 / 25);
+                period = std::chrono::duration<double>(1.0 / 45);
+            }
+
+            if (duration > period)
+            {
+                std::cout << name << " Thread DEADLINE MISS" << std::endl;
             }
 
             mOsLogTimes << name << "Thread -> duration: " << duration.count() << " period: " << period.count()

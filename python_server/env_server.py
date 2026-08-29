@@ -15,6 +15,11 @@ env.unwrapped.config.update({
     },
     "action": {"type": "ContinuousAction", "longitudinal": True, "lateral": False},
     "controlled_vehicles": 1,
+    "simulation_frequency": 135,  
+    "policy_frequency": 45, 
+    "screen_width": 400,
+    "screen_height": 150, 
+    "vehicles_count": 5,
 })
 
 obs, info = env.reset()

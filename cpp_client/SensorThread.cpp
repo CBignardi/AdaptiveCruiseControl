@@ -5,17 +5,6 @@
 
 SensorThread::SensorThread(SharedData &aSharedData, EnvClient &aClient) : mSharedData(aSharedData), mClient(aClient), mThread(&SensorThread::run, this)
 {
-    sched_param sch;
-    sch.sched_priority = 99;
-    int policy = SCHED_FIFO;
-    int result = pthread_setschedparam(mThread.native_handle(), policy, &sch);
-    if (result != 0)
-    {
-        throw std::runtime_error("Error scheduling parameter. " + std::string(strerror(result)));
-    }
-
-    pthread_getschedparam(mThread.native_handle(), &policy, &sch);
-    std::cout << "ThreadSensor" << " is executing at priority " << sch.sched_priority << std::endl;
 }
 
 void SensorThread::close()
@@ -32,22 +21,6 @@ void SensorThread::join()
 {
     mThread.join();
 }
-
-struct LeaderDistanceVelocity
-{
-    double mDistanceToLeader = 0;
-    double mVelocity = 0;
-};
-
-struct VehicleAttr
-{
-public:
-    double mPresence;
-    double mX;
-    double mY;
-    double mVx;
-    double mVy;
-};
 
 LeaderDistanceVelocity calculateVelocityAndDistanceToLeader(std::vector<VehicleAttr> &aVectorVehicleAttr)
 {
@@ -91,6 +64,16 @@ LeaderDistanceVelocity calculateVelocityAndDistanceToLeader(std::vector<VehicleA
 
 void SensorThread::run()
 {
+    sched_param sch;
+    sch.sched_priority = 70;
+    int result = pthread_setschedparam(mThread.native_handle(), SCHED_FIFO, &sch);
+    if (result != 0)
+    {
+        throw std::runtime_error("Error scheduling parameter. " + std::string(strerror(result)));
+    }
+
+    std::cout << "ThreadSensor" << " is executing at priority " << sch.sched_priority << std::endl;
+
     while (mRunning.load())
     {
         mStartTime = std::chrono::high_resolution_clock::now();
@@ -133,6 +116,7 @@ void SensorThread::run()
         mSharedData.mMutexSim.lock();
 
         mSharedData.setAll(egoSpeed, resp["terminated"], resp["truncated"], leaderDistanceVelocity.mDistanceToLeader, leaderDistanceVelocity.mVelocity);
+        mSharedData.incrementID();
 
         mSharedData.mMutexSim.unlock();
 

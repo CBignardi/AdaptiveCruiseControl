@@ -12,17 +12,6 @@ double MAX_ACELERATION = 2.0;   // m/s^2
 
 ControllerThread::ControllerThread(SharedData &aSharedData) : mSharedData(aSharedData), mThread(&ControllerThread::run, this)
 {
-    sched_param sch;
-    sch.sched_priority = 40;
-    int result = pthread_setschedparam(mThread.native_handle(), SCHED_FIFO, &sch);
-    if (result != 0)
-    {
-        throw std::runtime_error("Error scheduling parameter. " + std::string(strerror(result)));
-    }
-
-    int policy;
-    pthread_getschedparam(mThread.native_handle(), &policy, &sch);
-    std::cout << "ThreadController" << " is executing at priority " << sch.sched_priority << std::endl;
 }
 
 void ControllerThread::close()
@@ -43,6 +32,17 @@ void ControllerThread::join()
 
 void ControllerThread::run()
 {
+    sched_param sch;
+    sch.sched_priority = 40;
+    int result = pthread_setschedparam(mThread.native_handle(), SCHED_FIFO, &sch);
+    if (result != 0)
+    {
+        throw std::runtime_error("Error scheduling parameter. " + std::string(strerror(result)));
+    }
+
+    std::cout << "ThreadController" << " is executing at priority " << sch.sched_priority << std::endl;
+
+    int lastId = -1; // a negative number, because the first id will be 0 
 
     while (mRunning.load())
     {
@@ -55,17 +55,15 @@ void ControllerThread::run()
 
         // Save the values in local variables
         mSharedData.mMutexSim.lock();
-        size_t actualId = mSharedData.mSimData.mId;
+        int actualId = mSharedData.mSimData.mId;
         double distanceToLeader = mSharedData.mSimData.mDistanceToLeader;
         double velocityLeader = mSharedData.mSimData.mVelocityLeader;
         double egoSpeed = mSharedData.mSimData.mEgoSpeed;
         mSharedData.mMutexSim.unlock();
 
-        // std::cout << "contrl, dopo di copiamento variabili\n";
-
-        if (actualId > mLastId)
+        if (actualId > lastId)
         {
-            mLastId = actualId;
+            lastId = actualId;
 
             double acceleration;
 
@@ -103,6 +101,8 @@ void ControllerThread::run()
             mSharedData.mAcceletation = acceleration;
             mSharedData.mMutexSim.unlock();
             // std::cout << "control, dopo lock acc\n";
+
+            // std::cout << "contrl, acc: " << acceleration << " egoSpeed: " << egoSpeed << " velLeader: " << velocityLeader << "distLeader: " << distanceToLeader << " safteygay: " << safteyGap << " state: " << state << std::endl;
 
             logData.setData(acceleration, egoSpeed, velocityLeader, distanceToLeader, safteyGap, state);
         }

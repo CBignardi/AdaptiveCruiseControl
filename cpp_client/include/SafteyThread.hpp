@@ -31,8 +31,8 @@ private:
     time_type mEndTime;
     std::chrono::duration<double> mPeriod{1.0 / 5}; // 5Hz freq
 
-    std::ofstream mOsLogData{"logData.txt", std::ios::binary};
-    std::ofstream mOsLogTimes{"logTimes.txt", std::ios::binary};
+    std::ofstream mOsLogData;
+    std::ofstream mOsLogTimes;
 
     std::thread mThread;
 
