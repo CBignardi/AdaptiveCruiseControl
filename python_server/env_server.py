@@ -9,17 +9,18 @@ socket.bind("tcp://*:5555")
 env = gym.make("highway-v0", render_mode="human")
 env.unwrapped.config.update({
     "observation": {
-        "type": "Kinematics", "vehicles_count": 6,
+        "type": "Kinematics",
         "features": ["presence", "x", "y", "vx", "vy"],
         "absolute": True, "normalize": False,
     },
     "action": {"type": "ContinuousAction", "longitudinal": True, "lateral": False},
-    "controlled_vehicles": 1,
-    "simulation_frequency": 135,  
-    "policy_frequency": 45, 
+    "simulation_frequency": 75,  
+    "policy_frequency": 25, 
     "screen_width": 400,
-    "screen_height": 150, 
-    "vehicles_count": 5,
+    "screen_height": 50, 
+    "vehicles_count": 15,
+    "lanes_count": 3,
+    "duration": 120, 
 })
 
 obs, info = env.reset()

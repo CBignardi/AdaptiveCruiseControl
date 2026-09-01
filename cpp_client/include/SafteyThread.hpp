@@ -6,15 +6,13 @@
 #include <atomic>
 
 #include "utils.hpp"
-
-using time_type = std::chrono::time_point<std::chrono::high_resolution_clock>;
-
-
+#include "SensorThread.hpp"
+#include "ControllerThread.hpp"
 
 class SafteyThread
 {
 public:
-    SafteyThread(SharedData &aSharedData);
+    SafteyThread(SharedData &aSharedData, SensorThread &aSensorThread, ControllerThread &aControlThread, EnvClient &aClient);
 
     void close();
 
@@ -22,17 +20,13 @@ public:
 
     void join();
 
-    // void printLog();
-
 private:
     std::atomic<bool> mRunning{false};
     SharedData &mSharedData;
-    time_type mStartTime;
-    time_type mEndTime;
-    std::chrono::duration<double> mPeriod{1.0 / 5}; // 5Hz freq
 
-    std::ofstream mOsLogData;
-    std::ofstream mOsLogTimes;
+    SensorThread &mSensorThread;
+    ControllerThread &mControllerThread;
+    EnvClient &mClient;
 
     std::thread mThread;
 

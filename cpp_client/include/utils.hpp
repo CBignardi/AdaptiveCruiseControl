@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <vector>
 #include <queue>
+#include <atomic>
 
 #include <fstream>
 
@@ -60,8 +61,6 @@ struct QueueLog
 
     std::mutex mMutex;
 
-    // bool isEmpty() { return mIndex >= mVec.size(); }
-
     size_t size()
     {
         mMutex.lock();
@@ -100,7 +99,9 @@ public:
     // Simulator Data
     std::mutex mMutexSim;
     SimData mSimData;
-    double mAcceletation = 0.0;
+
+    std::atomic<double> mAcceleration{0.0};
+
     void setAll(double aEgoSpeed, bool aTerminated, bool aTruncated, double aDistanceToLeader, double aVelocityLeader)
     {
         mSimData.mEgoSpeed = aEgoSpeed;
@@ -122,6 +123,8 @@ private:
     zmq::context_t mContext;
     zmq::socket_t mSocket;
 
+    std::mutex mMutex;
+
 public:
     EnvClient() : mContext(1), mSocket(mContext, zmq::socket_type::req)
     {
@@ -130,36 +133,15 @@ public:
 
     json sendComandAndRecive(json msg)
     {
+        mMutex.lock();
+
         std::string s = msg.dump();
         auto tmpIgnore1 = mSocket.send(zmq::buffer(s), zmq::send_flags::none);
         zmq::message_t reply;
         auto tmpIgnore2 = mSocket.recv(reply, zmq::recv_flags::none);
+
+        mMutex.unlock();
+
         return json::parse(reply.to_string());
     }
-
-    // json sendComandAndRecive(json msg)
-    // {
-
-    //     auto t0 = std::chrono::high_resolution_clock::now();
-
-    //     std::string s = msg.dump();
-    //     auto t1 = std::chrono::high_resolution_clock::now();
-
-    //     auto tmpIgnore1 = mSocket.send(zmq::buffer(s), zmq::send_flags::none);
-    //     auto t2 = std::chrono::high_resolution_clock::now();
-
-    //     zmq::message_t reply;
-    //     auto tmpIgnore2 = mSocket.recv(reply, zmq::recv_flags::none);
-    //     auto t3 = std::chrono::high_resolution_clock::now();
-
-    //     json result = json::parse(reply.to_string());
-    //     auto t4 = std::chrono::high_resolution_clock::now();
-
-    //     std::cout << "dump: " << std::chrono::duration<double>(t1 - t0).count()
-    //               << " send: " << std::chrono::duration<double>(t2 - t1).count()
-    //               << " recv(wait): " << std::chrono::duration<double>(t3 - t2).count()
-    //               << " parse: " << std::chrono::duration<double>(t4 - t3).count() << std::endl;
-
-    //     return result;
-    // }
 };

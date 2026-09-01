@@ -19,9 +19,9 @@ int main(void)
     sensorThread.start();
 
     ControllerThread controllerThread(sharedData);
-    controllerThread.start(25); // 25 m/s
+    controllerThread.start(30); // 30 m/s
 
-    SafteyThread safteyThread(sharedData);
+    SafteyThread safteyThread(sharedData, sensorThread, controllerThread, client);
     safteyThread.start();
 
     sensorThread.join();

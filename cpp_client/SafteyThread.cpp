@@ -1,6 +1,14 @@
 #include "SafteyThread.hpp"
 
-SafteyThread::SafteyThread(SharedData &aSharedData) : mSharedData(aSharedData), mOsLogData("logData.txt"), mOsLogTimes("logTimes.txt"), mThread(&SafteyThread::run, this)
+// Parameters
+const double FREQ = 5;          // Hz
+const double FREQ_SENSOR = 25;  // Hz
+const double FREQ_CONTROL = 10; // Hz
+const std::string FILENAME_LOGDATA = "logData.txt";
+const std::string FILENAME_LOGTIMES = "logTimes.txt";
+
+SafteyThread::SafteyThread(SharedData &aSharedData, SensorThread &aSensorThread, ControllerThread &aControlThread, EnvClient &aClient)
+    : mSharedData(aSharedData), mSensorThread(aSensorThread), mControllerThread(aControlThread), mClient(aClient), mThread(&SafteyThread::run, this)
 {
 }
 
@@ -43,12 +51,29 @@ void SafteyThread::run()
         throw std::runtime_error("Error scheduling parameter. " + std::string(strerror(result)));
     }
 
-    std::cout << "ThreadSaftey" << " is executing at priority " << sch.sched_priority << std::endl;
+    // Variables
+    std::chrono::duration<double> periodThread(1.0 / FREQ);
+    std::ofstream osLogData(FILENAME_LOGDATA);
+    std::ofstream osLogTimes(FILENAME_LOGTIMES);
 
     while (mRunning.load())
     {
-        mStartTime = std::chrono::high_resolution_clock::now();
+        auto startTime = std::chrono::high_resolution_clock::now();
         // START of the function
+
+        mSharedData.mMutexSim.lock();
+        auto trucated = mSharedData.mSimData.mTruncated;
+        auto terminated = mSharedData.mSimData.mTerminated;
+        mSharedData.mMutexSim.unlock();
+
+        if (trucated == true || terminated == true)
+        { // Simulation died
+            std::cout << "Saftey: SIMULATION DIED\n";
+            mSensorThread.close();
+            mControllerThread.close();
+            close();
+            mClient.sendComandAndRecive({{"cmd", "close"}});
+        }
 
         auto sizeQueue = mSharedData.mQueueLog.size();
 
@@ -63,45 +88,48 @@ void SafteyThread::run()
             if (log.mFullLog)
             { // It is a Full Log (Control Log)
 
-                mOsLogData << "Acc: " << log.mAcceleration
-                           << " EgoSpeed: " << log.mEgoSpeed << " LeaderSpeed: " << log.mLeaderSpeed
-                           << " DistToLeader: " << log.mDistanceToLeader << " SafteyDist: " << log.mSafteyDistance << std::endl;
+                osLogData << std::fixed << std::setprecision(2)
+                          << "Acc: " << log.mAcceleration
+                          << " EgoSpeed: " << log.mEgoSpeed << " LeaderSpeed: " << log.mLeaderSpeed
+                          << " DistToLeader: " << log.mDistanceToLeader << " SafteyDist: " << log.mSafteyDistance << std::endl;
 
                 // Setup some variables for the full print in LogTimes
                 name = "Control";
-                period = std::chrono::duration<double>(1.0 / 25);
+                period = std::chrono::duration<double>(1.0 / FREQ_CONTROL);
             }
             else
             { // It is not a Full log (Sensor Log)
 
                 // Setup some variables for the full print in LogTimes
                 name = "Sensor";
-                period = std::chrono::duration<double>(1.0 / 45);
+                period = std::chrono::duration<double>(1.0 / FREQ_SENSOR);
             }
+
+            osLogTimes << name << "Thread -> duration: " << duration.count() << " period: " << period.count()
+                       << " startTime: " << formatTimestamp(log.mStartTime) << std::endl;
 
             if (duration > period)
             {
                 std::cout << name << " Thread DEADLINE MISS" << std::endl;
+                osLogTimes << name << " Thread DEADLINE MISS" << std::endl;
             }
-
-            mOsLogTimes << name << "Thread -> duration: " << duration.count() << " period: " << period.count()
-                        << " startTime: " << formatTimestamp(log.mStartTime) << std::endl;
         }
 
         // END of the function
-        mEndTime = std::chrono::high_resolution_clock::now();
+        auto endTime = std::chrono::high_resolution_clock::now();
 
-        auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(mEndTime - mStartTime);
+        auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(endTime - startTime);
 
-        mOsLogTimes << "SafteyThread -> duration: " << elapsed.count() << " period: " << mPeriod.count() << " startTime: " << formatTimestamp(mStartTime) << std::endl;
+        osLogTimes << "LogThread -> duration: " << elapsed.count() << " period: " << periodThread.count() << " startTime: " << formatTimestamp(startTime) << std::endl;
 
-        if (elapsed < mPeriod)
+        if (elapsed < periodThread)
         {
-            std::this_thread::sleep_for(mPeriod - elapsed);
+            std::this_thread::sleep_for(periodThread - elapsed);
         }
         else
         {
             std::cout << "Saftey Thread DEADLINE MISS" << std::endl;
+            osLogTimes << "Saftey Thread DEADLINE MISS" << std::endl;
         }
     }
 }

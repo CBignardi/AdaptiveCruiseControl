@@ -3,6 +3,9 @@
 #include <vector>
 #include <random>
 
+// Parameters
+const double FREQ = 25; // Hz
+
 SensorThread::SensorThread(SharedData &aSharedData, EnvClient &aClient) : mSharedData(aSharedData), mClient(aClient), mThread(&SensorThread::run, this)
 {
 }
@@ -41,14 +44,8 @@ LeaderDistanceVelocity calculateVelocityAndDistanceToLeader(std::vector<VehicleA
 
         if (((actualVehicle.mX - egoXPos) < minDistanceToLeader))
         {
-
             minDistanceToLeader = actualVehicle.mX - egoXPos;
             velocityLeader = actualVehicle.mVx;
-
-            // if (minDistanceToLeader < 0)
-            // {
-            //     // std::cout << "distToLeader negativa: " << minDistanceToLeader << " veicolo: " << i << " xPos: " << actualVehicle.mX << " egoPos: " << egoXPos << std::endl;
-            // }
         }
     }
 
@@ -72,16 +69,15 @@ void SensorThread::run()
         throw std::runtime_error("Error scheduling parameter. " + std::string(strerror(result)));
     }
 
-    std::cout << "ThreadSensor" << " is executing at priority " << sch.sched_priority << std::endl;
+    // Variables
+    std::chrono::duration<double> period(1.0 / FREQ);
 
     while (mRunning.load())
     {
-        mStartTime = std::chrono::high_resolution_clock::now();
+        auto startTime = std::chrono::high_resolution_clock::now();
         // START of the function
 
-        mSharedData.mMutexSim.lock();
-        double acceleration = mSharedData.mAcceletation;
-        mSharedData.mMutexSim.unlock();
+        double acceleration = mSharedData.mAcceleration.load();
 
         json resp = mClient.sendComandAndRecive({{"cmd", "step"}, {"accel", acceleration}});
 
@@ -104,13 +100,13 @@ void SensorThread::run()
         std::normal_distribution<double> dist(0.0, 0.1);
 
         double egoSpeed = vVehicleAttr.at(0).mVx;
-        // std::cout << "egoSpeed: " << egoSpeed << std::endl;
         LeaderDistanceVelocity leaderDistanceVelocity = calculateVelocityAndDistanceToLeader(vVehicleAttr);
 
+        // Add noise
         if (leaderDistanceVelocity.mDistanceToLeader != 0)
         {
-            // leaderDistanceVelocity.mDistanceToLeader += dist(generator);
-            // leaderDistanceVelocity.mVelocity += dist(generator);
+            leaderDistanceVelocity.mDistanceToLeader += dist(generator);
+            leaderDistanceVelocity.mVelocity += dist(generator);
         }
 
         mSharedData.mMutexSim.lock();
@@ -121,23 +117,19 @@ void SensorThread::run()
         mSharedData.mMutexSim.unlock();
 
         // END of the function
-        mEndTime = std::chrono::high_resolution_clock::now();
+        auto endTime = std::chrono::high_resolution_clock::now();
 
         LogData logData;
-        logData.setTime(mStartTime, mEndTime);
+        logData.setTime(startTime, endTime);
         logData.mFullLog = false;
-
-        // std::cout << "sensor, prima pushback \n";
 
         mSharedData.mQueueLog.pushElem(logData);
 
-        // std::cout << "sensor, dopo pushback \n";
+        auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(endTime - startTime);
 
-        auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(mEndTime - mStartTime);
-
-        if (elapsed < mPeriod)
+        if (elapsed < period)
         {
-            std::this_thread::sleep_for(mPeriod - elapsed);
+            std::this_thread::sleep_for(period - elapsed);
         }
     }
 }

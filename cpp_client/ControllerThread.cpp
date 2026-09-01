@@ -2,13 +2,15 @@
 #include <limits>
 
 // Parameters
-double KP_CRUICE = 0.02;
-double KP1_GAP = 0.02;
-double KP2_GAP = 0.05;
-double MIN_GAP = 5.0;           // meters
-double TIME_GAP = 1.5;          // seconds
-double MAX_DECELERATION = -4.0; // m/s^2
-double MAX_ACELERATION = 2.0;   // m/s^2
+const double KP_CRUICE = 0.02;
+const double KP1_GAP = 0.02;
+const double KP2_GAP = 0.05;
+const double MIN_GAP = 5.0;           // meters
+const double TIME_GAP = 1.5;          // seconds
+const double MAX_DECELERATION = -4.0; // m/s^2
+const double MAX_ACELERATION = 2.0;   // m/s^2
+
+const double FREQ = 10; // Hz
 
 ControllerThread::ControllerThread(SharedData &aSharedData) : mSharedData(aSharedData), mThread(&ControllerThread::run, this)
 {
@@ -40,18 +42,16 @@ void ControllerThread::run()
         throw std::runtime_error("Error scheduling parameter. " + std::string(strerror(result)));
     }
 
-    std::cout << "ThreadController" << " is executing at priority " << sch.sched_priority << std::endl;
-
-    int lastId = -1; // a negative number, because the first id will be 0 
+    // Variables
+    int lastId = -1; // a negative number, because the first id will be 0
+    std::chrono::duration<double> period(1.0 / FREQ);
 
     while (mRunning.load())
     {
         LogData logData;
 
-        mStartTime = std::chrono::high_resolution_clock::now();
+        auto startTime = std::chrono::high_resolution_clock::now();
         // START of the function
-
-        // std::cout << "contrl, prima di copiamento variabili\n";
 
         // Save the values in local variables
         mSharedData.mMutexSim.lock();
@@ -74,13 +74,13 @@ void ControllerThread::run()
 
             if (!hasLeader || distanceToLeader > (safteyGap * 1.5))
             { // Normal cruice control
-                state = "Cruise";
+                state = "C";
 
                 acceleration = KP_CRUICE * (mVelocity - egoSpeed);
             }
             else
             { // Car in front, Gap cruice control
-                state = "Gap";
+                state = "G";
 
                 double gapError = distanceToLeader - safteyGap;
                 double speedDiff = velocityLeader - egoSpeed;
@@ -95,35 +95,29 @@ void ControllerThread::run()
 
             acceleration = std::clamp(acceleration, MAX_DECELERATION, MAX_ACELERATION);
 
-            // std::cout << "control, prima lock acc\n";
+            mSharedData.mAcceleration.store(acceleration);
 
-            mSharedData.mMutexSim.lock();
-            mSharedData.mAcceletation = acceleration;
-            mSharedData.mMutexSim.unlock();
-            // std::cout << "control, dopo lock acc\n";
-
-            // std::cout << "contrl, acc: " << acceleration << " egoSpeed: " << egoSpeed << " velLeader: " << velocityLeader << "distLeader: " << distanceToLeader << " safteygay: " << safteyGap << " state: " << state << std::endl;
+            std::cout << std::fixed << std::setprecision(2) 
+                      << "acc: " << acceleration << " V_ego: " << egoSpeed
+                      << " V_lead: " << velocityLeader << " D_lead: " << distanceToLeader
+                      << " SafteyGap: " << safteyGap << " state: " << state << std::endl;
 
             logData.setData(acceleration, egoSpeed, velocityLeader, distanceToLeader, safteyGap, state);
         }
 
         // END of the function
-        mEndTime = std::chrono::high_resolution_clock::now();
+        auto endTime = std::chrono::high_resolution_clock::now();
 
-        logData.setTime(mStartTime, mEndTime);
+        logData.setTime(startTime, endTime);
         logData.mFullLog = true;
-
-        // std::cout << "controller, prima pushback \n";
 
         mSharedData.mQueueLog.pushElem(logData);
 
-        // std::cout << "controller, dopo pushback \n";
+        auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(endTime - startTime);
 
-        auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(mEndTime - mStartTime);
-
-        if (elapsed < mPeriod)
+        if (elapsed < period)
         {
-            std::this_thread::sleep_for(mPeriod - elapsed);
+            std::this_thread::sleep_for(period - elapsed);
         }
     }
 }
