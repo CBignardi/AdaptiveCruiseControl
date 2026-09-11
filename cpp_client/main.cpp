@@ -13,12 +13,14 @@ int main(void)
     std::mutex mutexGlobalId;
     SharedData sharedData;
 
+    DataLogger dataLogger({"acceleration", "egoSpeed", "leaderSpeed", "distanceLeader", "safteyGap" }, "dataLog.csv");
+
     json resp = client.sendComandAndRecive({{"cmd", "reset"}});
 
     SensorThread sensorThread(sharedData, client);
     sensorThread.start();
 
-    ControllerThread controllerThread(sharedData);
+    ControllerThread controllerThread(sharedData, dataLogger);
     controllerThread.start(30); // 30 m/s
 
     SafteyThread safteyThread(sharedData, sensorThread, controllerThread, client);

@@ -6,24 +6,26 @@ context = zmq.Context()
 socket = context.socket(zmq.REP)
 socket.bind("tcp://*:5555")
 
-env = gym.make("highway-v0", render_mode="human")
+env = gym.make("highway-v0",
+                render_mode="human",
+                config={
+                    "screen_width": 550,
+                    "screen_height": 120,
+                })
 env.unwrapped.config.update({
     "observation": {
         "type": "Kinematics",
         "features": ["presence", "x", "y", "vx", "vy"],
-        "absolute": True, "normalize": False,
+        "absolute": True,
+        "normalize": False,
     },
-    "action": {"type": "ContinuousAction", "longitudinal": True, "lateral": False},
-    "simulation_frequency": 75,  
-    "policy_frequency": 25, 
-    "screen_width": 400,
-    "screen_height": 50, 
+    "action": {"type": "ContinuousAction", "longitudinal": True, "lateral": False}, # Disable the steering
+    "simulation_frequency": 60,
+    "policy_frequency": 20,
     "vehicles_count": 15,
     "lanes_count": 3,
-    "duration": 120, 
+    "duration": 90, # [s] Max duration of the simulation
 })
-
-obs, info = env.reset()
 
 while True:
     msg = socket.recv_json()

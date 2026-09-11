@@ -2,17 +2,20 @@
 #include <limits>
 
 // Parameters
-const double KP_CRUICE = 0.02;
-const double KP1_GAP = 0.02;
-const double KP2_GAP = 0.05;
-const double MIN_GAP = 5.0;           // meters
-const double TIME_GAP = 1.5;          // seconds
+const double KP_CRUICE = 0.035;
+const double KP_GAP_GAP = 0.03;
+const double KP_SPEED_GAP = 0.045;
+
+// For the Saftey Gap
+const double MIN_GAP = 5.0;  // meters
+const double TIME_GAP = 1.5; // seconds
+
 const double MAX_DECELERATION = -4.0; // m/s^2
 const double MAX_ACELERATION = 2.0;   // m/s^2
 
 const double FREQ = 10; // Hz
 
-ControllerThread::ControllerThread(SharedData &aSharedData) : mSharedData(aSharedData), mThread(&ControllerThread::run, this)
+ControllerThread::ControllerThread(SharedData &aSharedData, DataLogger &aDataLogger) : mSharedData(aSharedData), mDataLogger(aDataLogger), mThread(&ControllerThread::run, this)
 {
 }
 
@@ -43,13 +46,11 @@ void ControllerThread::run()
     }
 
     // Variables
-    int lastId = -1; // a negative number, because the first id will be 0
+    size_t lastId = 0;
     std::chrono::duration<double> period(1.0 / FREQ);
 
     while (mRunning.load())
     {
-        LogData logData;
-
         auto startTime = std::chrono::high_resolution_clock::now();
         // START of the function
 
@@ -85,7 +86,7 @@ void ControllerThread::run()
                 double gapError = distanceToLeader - safteyGap;
                 double speedDiff = velocityLeader - egoSpeed;
 
-                acceleration = KP1_GAP * gapError + KP2_GAP * speedDiff;
+                acceleration = KP_GAP_GAP * gapError + KP_SPEED_GAP * speedDiff;
 
                 if ((egoSpeed >= mVelocity) && (acceleration > 0))
                 {
@@ -97,21 +98,11 @@ void ControllerThread::run()
 
             mSharedData.mAcceleration.store(acceleration);
 
-            std::cout << std::fixed << std::setprecision(2) 
-                      << "acc: " << acceleration << " V_ego: " << egoSpeed
-                      << " V_lead: " << velocityLeader << " D_lead: " << distanceToLeader
-                      << " SafteyGap: " << safteyGap << " state: " << state << std::endl;
-
-            logData.setData(acceleration, egoSpeed, velocityLeader, distanceToLeader, safteyGap, state);
+            mDataLogger.log({acceleration, egoSpeed, velocityLeader, distanceToLeader, safteyGap});
         }
 
         // END of the function
         auto endTime = std::chrono::high_resolution_clock::now();
-
-        logData.setTime(startTime, endTime);
-        logData.mFullLog = true;
-
-        mSharedData.mQueueLog.pushElem(logData);
 
         auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(endTime - startTime);
 

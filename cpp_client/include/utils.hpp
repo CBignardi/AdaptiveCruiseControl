@@ -8,6 +8,11 @@
 #include <vector>
 #include <queue>
 #include <atomic>
+// #include "spdlog/spdlog.h"
+// #include "spdlog/sinks/basic_file_sink.h"
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <fstream>
 
@@ -16,7 +21,7 @@ using time_type = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
 struct SimData
 {
-    int mId = 0;
+    size_t mId = 0;
     double mEgoSpeed;
     bool mTerminated;
     bool mTruncated;
@@ -24,71 +29,62 @@ struct SimData
     double mVelocityLeader;
 };
 
-struct LogData
+class DataLogger
 {
-    bool mFullLog;
-
-    time_type mStartTime;
-    time_type mEndTime;
-
-    double mAcceleration;
-    double mEgoSpeed;
-    double mLeaderSpeed;
-    double mDistanceToLeader;
-    double mSafteyDistance;
-    std::string mState;
-
-    void setData(double aAcceleration, double aEgoSpeed, double aLeaderSpeed, double aDistanceToLeader, double aSafteyDistance, std::string aState)
+public:
+    DataLogger(const std::vector<std::string> &aFields, const std::string &aCsvFilename, const std::string &aUdpHost = "127.0.0.1", int aUdpPort = 9870)
+        : mFields(aFields)
     {
-        mAcceleration = aAcceleration;
-        mEgoSpeed = aEgoSpeed;
-        mLeaderSpeed = aLeaderSpeed;
-        mDistanceToLeader = aDistanceToLeader;
-        mSafteyDistance = aSafteyDistance;
-        mState = aState;
+        // Setup for the .csv file
+        mFile.open(aCsvFilename);
+        mFile << "timestamp";
+        for (const auto &f : mFields)
+            mFile << "," << f;
+        mFile << "\n";
+
+        mStartTime = std::chrono::steady_clock::now();
+
+        mSock = socket(AF_INET, SOCK_DGRAM, 0);
+        mAddr.sin_family = AF_INET;
+        mAddr.sin_port = htons(aUdpPort);
+        inet_pton(AF_INET, aUdpHost.c_str(), &mAddr.sin_addr);
     }
 
-    void setTime(time_type aStartTime, time_type aEndTime)
+    void log(const std::vector<double> &values)
     {
-        mStartTime = aStartTime;
-        mEndTime = aEndTime;
-    }
-};
+        double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - mStartTime).count();
 
-struct QueueLog
-{
-    std::queue<LogData> mQueue;
+        std::lock_guard<std::mutex> lock(mMutex);
 
-    std::mutex mMutex;
-
-    size_t size()
-    {
-        mMutex.lock();
-        auto tmp = mQueue.size();
-        mMutex.unlock();
-        return tmp;
-    }
-
-    LogData getElem()
-    {
-        mMutex.lock();
-        if (mQueue.empty())
+        // Write in the .csv file
+        mFile << std::fixed << std::setprecision(6) << t;
+        for (double v : values)
         {
-            mMutex.unlock();
-            throw std::runtime_error("Errore, getElem() chiamato con queue vuota");
+            mFile << "," << v;
         }
-        auto tmp = mQueue.front();
-        mQueue.pop();
-        mMutex.unlock();
-        return tmp;
+        mFile << "\n";
+
+        // Streaming to PlotJuggler
+        std::ostringstream udpMsg;
+        udpMsg << "{";
+        udpMsg << "\"timestamp\":" << t;
+        for (size_t i = 0; i < mFields.size() && i < values.size(); ++i)
+        {
+            udpMsg << ",\"" << mFields[i] << "\":" << values[i];
+        }
+        udpMsg << "}";
+        std::string payload = udpMsg.str();
+        sendto(mSock, payload.c_str(), (int)payload.size(), 0, reinterpret_cast<sockaddr *>(&mAddr), sizeof(mAddr));
     }
 
-    void pushElem(LogData aLogData)
-    {
-        mMutex.lock();
-        mQueue.push(aLogData);
-        mMutex.unlock();
-    }
+private:
+    std::vector<std::string> mFields;
+    std::ofstream mFile;
+    std::mutex mMutex;
+    std::chrono::steady_clock::time_point mStartTime;
+
+    int mSock;
+    sockaddr_in mAddr{};
 };
 
 struct SharedData
@@ -112,9 +108,6 @@ public:
     }
 
     void incrementID() { mSimData.mId++; }
-
-    // Log Data
-    QueueLog mQueueLog;
 };
 
 class EnvClient
@@ -123,9 +116,9 @@ private:
     zmq::context_t mContext;
     zmq::socket_t mSocket;
 
+public:
     std::mutex mMutex;
 
-public:
     EnvClient() : mContext(1), mSocket(mContext, zmq::socket_type::req)
     {
         mSocket.connect("tcp://localhost:5555");
@@ -133,15 +126,10 @@ public:
 
     json sendComandAndRecive(json msg)
     {
-        mMutex.lock();
-
         std::string s = msg.dump();
         auto tmpIgnore1 = mSocket.send(zmq::buffer(s), zmq::send_flags::none);
         zmq::message_t reply;
         auto tmpIgnore2 = mSocket.recv(reply, zmq::recv_flags::none);
-
-        mMutex.unlock();
-
         return json::parse(reply.to_string());
     }
 };

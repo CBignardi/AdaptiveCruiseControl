@@ -4,7 +4,9 @@
 #include <random>
 
 // Parameters
-const double FREQ = 25; // Hz
+const double FREQ = 20; // Hz
+const double MEAN = 0.0;
+const double STDDEV = 0.2;
 
 SensorThread::SensorThread(SharedData &aSharedData, EnvClient &aClient) : mSharedData(aSharedData), mClient(aClient), mThread(&SensorThread::run, this)
 {
@@ -79,7 +81,9 @@ void SensorThread::run()
 
         double acceleration = mSharedData.mAcceleration.load();
 
+        mClient.mMutex.lock();
         json resp = mClient.sendComandAndRecive({{"cmd", "step"}, {"accel", acceleration}});
+        mClient.mMutex.unlock();
 
         // fill the array with the Vehicles Attributes
         std::vector<VehicleAttr> vVehicleAttr;
@@ -97,7 +101,7 @@ void SensorThread::run()
         // Add noise to the value
         std::random_device rd;
         std::mt19937 generator(rd());
-        std::normal_distribution<double> dist(0.0, 0.1);
+        std::normal_distribution<double> dist(MEAN, STDDEV);
 
         double egoSpeed = vVehicleAttr.at(0).mVx;
         LeaderDistanceVelocity leaderDistanceVelocity = calculateVelocityAndDistanceToLeader(vVehicleAttr);
@@ -110,20 +114,12 @@ void SensorThread::run()
         }
 
         mSharedData.mMutexSim.lock();
-
         mSharedData.setAll(egoSpeed, resp["terminated"], resp["truncated"], leaderDistanceVelocity.mDistanceToLeader, leaderDistanceVelocity.mVelocity);
         mSharedData.incrementID();
-
         mSharedData.mMutexSim.unlock();
 
         // END of the function
         auto endTime = std::chrono::high_resolution_clock::now();
-
-        LogData logData;
-        logData.setTime(startTime, endTime);
-        logData.mFullLog = false;
-
-        mSharedData.mQueueLog.pushElem(logData);
 
         auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(endTime - startTime);
 
