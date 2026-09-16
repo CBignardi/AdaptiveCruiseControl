@@ -7,7 +7,6 @@
 
 #include "utils.hpp"
 
-
 struct LeaderDistanceVelocity
 {
     double mDistanceToLeader = 0;
@@ -27,7 +26,7 @@ public:
 class SensorThread
 {
 public:
-    SensorThread(SharedData &aSharedData, EnvClient &aClient);
+    SensorThread(SharedData &aSharedData, EnvClient &aClient, PeriodicTaskMonitor &aPeriodicTaskMonitor);
 
     void close();
 
@@ -40,6 +39,7 @@ private:
     std::atomic<bool> mRunning{false};
     SharedData &mSharedData;
     EnvClient &mClient;
+    PeriodicTaskMonitor &mPeriodicTaskMonitor;
 
     std::thread mThread;
 

@@ -1,12 +1,9 @@
 #include "SafteyThread.hpp"
 
-// Parameters
-const double FREQ = 5;          // Hz
-const double FREQ_SENSOR = 20;  // Hz
-const double FREQ_CONTROL = 10; // Hz
-
-SafteyThread::SafteyThread(SharedData &aSharedData, SensorThread &aSensorThread, ControllerThread &aControlThread, EnvClient &aClient)
-    : mSharedData(aSharedData), mSensorThread(aSensorThread), mControllerThread(aControlThread), mClient(aClient), mThread(&SafteyThread::run, this)
+SafteyThread::SafteyThread(SharedData &aSharedData, SensorThread &aSensorThread, ControllerThread &aControlThread, EnvClient &aClient,
+                           PeriodicTaskMonitor &aPeriodicTaskMonitor)
+    : mSharedData(aSharedData), mSensorThread(aSensorThread), mControllerThread(aControlThread), mClient(aClient), mThread(&SafteyThread::run, this),
+      mPeriodicTaskMonitor(aPeriodicTaskMonitor)
 {
 }
 
@@ -25,6 +22,38 @@ void SafteyThread::join()
     mThread.join();
 }
 
+void checkDeadlines(PeriodicTaskMonitor &aPeriodicMonitor, const std::string aName)
+{
+    // ASSUMPION: the threads have the deadline equals to the period.
+
+    std::vector<double> vecPeriods;
+    std::vector<double> vecCycles;
+
+    // Copy the vectors in the local variables
+    aPeriodicMonitor.mMutex.lock();
+    std::copy(aPeriodicMonitor.mVecPeriods.begin(), aPeriodicMonitor.mVecPeriods.end(), vecPeriods.begin());
+    aPeriodicMonitor.mVecPeriods.clear();
+    std::copy(aPeriodicMonitor.mVecCycles.begin(), aPeriodicMonitor.mVecCycles.end(), vecCycles.begin());
+    aPeriodicMonitor.mVecCycles.clear();
+    aPeriodicMonitor.mMutex.unlock();
+
+    auto period = aPeriodicMonitor.getPeriod();
+
+    // The two vectors have the same size
+    for (int i = 0; i < vecPeriods.size(); i++)
+    {
+        // Accept a little error (10% error)
+        if (vecPeriods.at(i) > period * 1.1)
+        { // Period miss
+            std::cout << "Saftey: " << aName << " Thread missed period, Actual Period: " << vecPeriods.at(i) << ", Expected Period: " << period * 1.1 << std::endl;
+        }
+        if (vecCycles.at(i) > period)
+        { // Deadline miss
+            std::cout << "Saftey: " << aName << " Thread missed deadline, Actual Cycle: " << vecCycles.at(i) << ", Max Cycle: " << period << std::endl;
+        }
+    }
+}
+
 void SafteyThread::run()
 {
     sched_param sch;
@@ -36,13 +65,12 @@ void SafteyThread::run()
     }
 
     // Variables
-    std::chrono::duration<double> periodThread(1.0 / FREQ);
     size_t lastId = 0;
 
     while (mRunning.load())
     {
-        auto startTime = std::chrono::high_resolution_clock::now();
         // START of the function
+        mPeriodicTaskMonitor.startCycle();
 
         mSharedData.mMutexSim.lock();
         size_t actualId = mSharedData.mSimData.mId;
@@ -66,17 +94,9 @@ void SafteyThread::run()
         }
 
         // END of the function
-        auto endTime = std::chrono::high_resolution_clock::now();
-
-        auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(endTime - startTime);
-
-        if (elapsed < periodThread)
-        {
-            std::this_thread::sleep_for(periodThread - elapsed);
-        }
-        else
-        {
-            std::cout << "Saftey Thread DEADLINE MISS" << std::endl;
-        }
+        // std::cout << "fine ciclo\n";
+        mPeriodicTaskMonitor.endCycle();
+        // std::cout << "fine ciclo 2\n";
+        mPeriodicTaskMonitor.sleep();
     }
 }

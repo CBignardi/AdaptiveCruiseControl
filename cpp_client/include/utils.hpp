@@ -1,6 +1,8 @@
 #pragma once
 
 #include <mutex>
+#include <thread>
+
 #include <zmq.hpp>
 #include <nlohmann/json.hpp>
 #include <iostream>
@@ -8,8 +10,6 @@
 #include <vector>
 #include <queue>
 #include <atomic>
-// #include "spdlog/spdlog.h"
-// #include "spdlog/sinks/basic_file_sink.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -17,7 +17,6 @@
 #include <fstream>
 
 using json = nlohmann::json;
-using time_type = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
 struct SimData
 {
@@ -32,25 +31,28 @@ struct SimData
 class DataLogger
 {
 public:
-    DataLogger(const std::vector<std::string> &aFields, const std::string &aCsvFilename, const std::string &aUdpHost = "127.0.0.1", int aUdpPort = 9870)
+    DataLogger(const std::vector<std::string> &aFields, const std::string &aCsvFilename)
         : mFields(aFields)
     {
         // Setup for the .csv file
         mFile.open(aCsvFilename);
         mFile << "timestamp";
         for (const auto &f : mFields)
-            mFile << "," << f;
+            mFile << ",/" << f;
         mFile << "\n";
 
         mStartTime = std::chrono::steady_clock::now();
-
-        mSock = socket(AF_INET, SOCK_DGRAM, 0);
-        mAddr.sin_family = AF_INET;
-        mAddr.sin_port = htons(aUdpPort);
-        inet_pton(AF_INET, aUdpHost.c_str(), &mAddr.sin_addr);
     }
 
-    void log(const std::vector<double> &values)
+    void startUDPConnection()
+    {
+        mSock = socket(AF_INET, SOCK_DGRAM, 0);
+        mAddr.sin_family = AF_INET;
+        mAddr.sin_port = htons(9870);
+        inet_pton(AF_INET, "127.0.0.1", &mAddr.sin_addr);
+    }
+
+    double logCSV(const std::vector<double> &values)
     {
         double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - mStartTime).count();
 
@@ -63,6 +65,16 @@ public:
             mFile << "," << v;
         }
         mFile << "\n";
+
+        return t;
+    }
+
+    void log(const std::vector<double> &values)
+    {
+        // Write in the .csv file
+        double t = logCSV(values);
+
+        std::lock_guard<std::mutex> lock(mMutex);
 
         // Streaming to PlotJuggler
         std::ostringstream udpMsg;
@@ -132,4 +144,64 @@ public:
         auto tmpIgnore2 = mSocket.recv(reply, zmq::recv_flags::none);
         return json::parse(reply.to_string());
     }
+};
+
+class PeriodicTaskMonitor
+{
+    using Clock = std::chrono::steady_clock;
+
+private:
+    std::string mName;
+    double mPeriod;
+
+    Clock::time_point mStartTime;
+    bool mHasStarted = false;
+
+    std::chrono::duration<double, std::milli> mLastPeriod;
+    std::chrono::duration<double, std::milli> mLastCycle;
+    DataLogger &mDataLogger;
+
+public:
+    PeriodicTaskMonitor(std::string aName, double aFreq, DataLogger &aDataLogger) : mName(aName), mPeriod(1 / aFreq), mDataLogger(aDataLogger) {}
+
+    std::mutex mMutex;
+    std::vector<double> mVecPeriods;
+    std::vector<double> mVecCycles;
+
+    void startCycle()
+    {
+        auto now = Clock::now();
+
+        if (mHasStarted)
+        {
+            mLastPeriod = std::chrono::duration<double, std::milli>(now - mStartTime);
+        }
+        mStartTime = now;
+        mHasStarted = true;
+    }
+
+    void endCycle()
+    {
+        mLastCycle = std::chrono::duration<double, std::milli>(Clock::now() - mStartTime);
+
+        mMutex.lock();
+        mVecPeriods.push_back(mLastPeriod.count());
+        mVecCycles.push_back(mLastCycle.count());
+        mMutex.unlock();
+
+        // Log the data
+        mDataLogger.logCSV({mLastPeriod.count(), mLastCycle.count()});
+    }
+
+    void sleep()
+    {
+        double periodMillisec = mPeriod * 1000.0; // Conversion to millisecond
+        if (periodMillisec > mLastCycle.count())
+        {
+            auto timeToSleep = periodMillisec - mLastCycle.count();
+            std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(timeToSleep));
+        }
+    }
+
+    double getPeriod() { return mPeriod; }
 };

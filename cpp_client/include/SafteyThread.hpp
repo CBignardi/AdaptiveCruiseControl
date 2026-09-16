@@ -12,7 +12,8 @@
 class SafteyThread
 {
 public:
-    SafteyThread(SharedData &aSharedData, SensorThread &aSensorThread, ControllerThread &aControlThread, EnvClient &aClient);
+    SafteyThread(SharedData &aSharedData, SensorThread &aSensorThread, ControllerThread &aControlThread, EnvClient &aClient,
+                 PeriodicTaskMonitor &aPeriodicTaskMonitor);
 
     void close();
 
@@ -27,6 +28,7 @@ private:
     SensorThread &mSensorThread;
     ControllerThread &mControllerThread;
     EnvClient &mClient;
+    PeriodicTaskMonitor &mPeriodicTaskMonitor;
 
     std::thread mThread;
 

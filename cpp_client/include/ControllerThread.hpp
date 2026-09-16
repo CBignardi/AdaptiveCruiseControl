@@ -10,7 +10,7 @@
 class ControllerThread
 {
 public:
-    ControllerThread(SharedData &aSharedData, DataLogger& aDataLogger);
+    ControllerThread(SharedData &aSharedData, DataLogger& aDataLogger, PeriodicTaskMonitor &aPeriodicTaskMonitor);
 
     void close();
 
@@ -22,6 +22,7 @@ private:
     std::atomic<bool> mRunning{false};
     SharedData &mSharedData;
     DataLogger &mDataLogger;
+    PeriodicTaskMonitor &mPeriodicTaskMonitor;
 
     std::thread mThread;
 

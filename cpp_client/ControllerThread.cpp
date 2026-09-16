@@ -13,9 +13,8 @@ const double TIME_GAP = 1.5; // seconds
 const double MAX_DECELERATION = -4.0; // m/s^2
 const double MAX_ACELERATION = 2.0;   // m/s^2
 
-const double FREQ = 10; // Hz
-
-ControllerThread::ControllerThread(SharedData &aSharedData, DataLogger &aDataLogger) : mSharedData(aSharedData), mDataLogger(aDataLogger), mThread(&ControllerThread::run, this)
+ControllerThread::ControllerThread(SharedData &aSharedData, DataLogger &aDataLogger, PeriodicTaskMonitor &aPeriodicTaskMonitor)
+    : mSharedData(aSharedData), mDataLogger(aDataLogger), mPeriodicTaskMonitor(aPeriodicTaskMonitor), mThread(&ControllerThread::run, this)
 {
 }
 
@@ -38,7 +37,7 @@ void ControllerThread::join()
 void ControllerThread::run()
 {
     sched_param sch;
-    sch.sched_priority = 40;
+    sch.sched_priority = 35;
     int result = pthread_setschedparam(mThread.native_handle(), SCHED_FIFO, &sch);
     if (result != 0)
     {
@@ -47,12 +46,11 @@ void ControllerThread::run()
 
     // Variables
     size_t lastId = 0;
-    std::chrono::duration<double> period(1.0 / FREQ);
 
     while (mRunning.load())
     {
-        auto startTime = std::chrono::high_resolution_clock::now();
         // START of the function
+        mPeriodicTaskMonitor.startCycle();
 
         // Save the values in local variables
         mSharedData.mMutexSim.lock();
@@ -61,6 +59,7 @@ void ControllerThread::run()
         double velocityLeader = mSharedData.mSimData.mVelocityLeader;
         double egoSpeed = mSharedData.mSimData.mEgoSpeed;
         mSharedData.mMutexSim.unlock();
+
 
         if (actualId > lastId)
         {
@@ -102,13 +101,7 @@ void ControllerThread::run()
         }
 
         // END of the function
-        auto endTime = std::chrono::high_resolution_clock::now();
-
-        auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(endTime - startTime);
-
-        if (elapsed < period)
-        {
-            std::this_thread::sleep_for(period - elapsed);
-        }
+        mPeriodicTaskMonitor.endCycle();
+        mPeriodicTaskMonitor.sleep();
     }
 }

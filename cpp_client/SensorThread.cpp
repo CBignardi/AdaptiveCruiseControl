@@ -4,11 +4,11 @@
 #include <random>
 
 // Parameters
-const double FREQ = 20; // Hz
 const double MEAN = 0.0;
-const double STDDEV = 0.2;
+const double STDDEV = 0.1;
 
-SensorThread::SensorThread(SharedData &aSharedData, EnvClient &aClient) : mSharedData(aSharedData), mClient(aClient), mThread(&SensorThread::run, this)
+SensorThread::SensorThread(SharedData &aSharedData, EnvClient &aClient, PeriodicTaskMonitor &aPeriodicTaskMonitor)
+    : mSharedData(aSharedData), mClient(aClient), mPeriodicTaskMonitor(aPeriodicTaskMonitor), mThread(&SensorThread::run, this)
 {
 }
 
@@ -64,20 +64,17 @@ LeaderDistanceVelocity calculateVelocityAndDistanceToLeader(std::vector<VehicleA
 void SensorThread::run()
 {
     sched_param sch;
-    sch.sched_priority = 70;
+    sch.sched_priority = 60;
     int result = pthread_setschedparam(mThread.native_handle(), SCHED_FIFO, &sch);
     if (result != 0)
     {
         throw std::runtime_error("Error scheduling parameter. " + std::string(strerror(result)));
     }
 
-    // Variables
-    std::chrono::duration<double> period(1.0 / FREQ);
-
     while (mRunning.load())
     {
-        auto startTime = std::chrono::high_resolution_clock::now();
         // START of the function
+        mPeriodicTaskMonitor.startCycle();
 
         double acceleration = mSharedData.mAcceleration.load();
 
@@ -119,13 +116,7 @@ void SensorThread::run()
         mSharedData.mMutexSim.unlock();
 
         // END of the function
-        auto endTime = std::chrono::high_resolution_clock::now();
-
-        auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(endTime - startTime);
-
-        if (elapsed < period)
-        {
-            std::this_thread::sleep_for(period - elapsed);
-        }
+        mPeriodicTaskMonitor.endCycle();
+        mPeriodicTaskMonitor.sleep();
     }
 }
