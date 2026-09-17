@@ -28,10 +28,18 @@ struct SimData
     double mVelocityLeader;
 };
 
-class DataLogger
+class Logger
 {
+private:
+    std::vector<std::string> mFields;
+    std::ofstream mFile;
+    std::chrono::steady_clock::time_point mStartTime;
+
+    int mSock;
+    sockaddr_in mAddr{};
+
 public:
-    DataLogger(const std::vector<std::string> &aFields, const std::string &aCsvFilename)
+    Logger(const std::vector<std::string> &aFields, const std::string &aCsvFilename)
         : mFields(aFields)
     {
         // Setup for the .csv file
@@ -56,8 +64,6 @@ public:
     {
         double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - mStartTime).count();
 
-        std::lock_guard<std::mutex> lock(mMutex);
-
         // Write in the .csv file
         mFile << std::fixed << std::setprecision(6) << t;
         for (double v : values)
@@ -74,8 +80,6 @@ public:
         // Write in the .csv file
         double t = logCSV(values);
 
-        std::lock_guard<std::mutex> lock(mMutex);
-
         // Streaming to PlotJuggler
         std::ostringstream udpMsg;
         udpMsg << "{";
@@ -89,14 +93,10 @@ public:
         sendto(mSock, payload.c_str(), (int)payload.size(), 0, reinterpret_cast<sockaddr *>(&mAddr), sizeof(mAddr));
     }
 
-private:
-    std::vector<std::string> mFields;
-    std::ofstream mFile;
-    std::mutex mMutex;
-    std::chrono::steady_clock::time_point mStartTime;
-
-    int mSock;
-    sockaddr_in mAddr{};
+    void flush()
+    {
+        mFile.flush();
+    }
 };
 
 struct SharedData
@@ -146,7 +146,7 @@ public:
     }
 };
 
-class PeriodicTaskMonitor
+class TaskWatch
 {
     using Clock = std::chrono::steady_clock;
 
@@ -159,10 +159,11 @@ private:
 
     std::chrono::duration<double, std::milli> mLastPeriod;
     std::chrono::duration<double, std::milli> mLastCycle;
-    DataLogger &mDataLogger;
+    Logger &mDataLogger;
+    bool mHasStartedLogging = false;
 
 public:
-    PeriodicTaskMonitor(std::string aName, double aFreq, DataLogger &aDataLogger) : mName(aName), mPeriod(1 / aFreq), mDataLogger(aDataLogger) {}
+    TaskWatch(std::string aName, double aFreq, Logger &aDataLogger) : mName(aName), mPeriod(1 / aFreq), mDataLogger(aDataLogger) {}
 
     std::mutex mMutex;
     std::vector<double> mVecPeriods;
@@ -189,8 +190,13 @@ public:
         mVecCycles.push_back(mLastCycle.count());
         mMutex.unlock();
 
-        // Log the data
-        mDataLogger.logCSV({mLastPeriod.count(), mLastCycle.count()});
+        // Log the data (skip the first log, because mLastPeriod will be not initialize)
+        if (mHasStartedLogging)
+        {
+            mDataLogger.logCSV({mLastPeriod.count(), mLastCycle.count()});
+            mDataLogger.flush();
+        }
+        mHasStartedLogging = true;
     }
 
     void sleep()

@@ -26,7 +26,7 @@ public:
 class SensorThread
 {
 public:
-    SensorThread(SharedData &aSharedData, EnvClient &aClient, PeriodicTaskMonitor &aPeriodicTaskMonitor);
+    SensorThread(SharedData &aSharedData, EnvClient &aClient, TaskWatch &aPeriodicTaskMonitor);
 
     void close();
 
@@ -39,7 +39,7 @@ private:
     std::atomic<bool> mRunning{false};
     SharedData &mSharedData;
     EnvClient &mClient;
-    PeriodicTaskMonitor &mPeriodicTaskMonitor;
+    TaskWatch &mTaskWatch;
 
     std::thread mThread;
 

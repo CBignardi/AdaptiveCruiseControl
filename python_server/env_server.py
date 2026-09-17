@@ -24,7 +24,7 @@ env.unwrapped.config.update({
     "policy_frequency": 20,
     "vehicles_count": 15,
     "lanes_count": 3,
-    "duration": 90, # [s] Max duration of the simulation
+    "duration": 60, # [s] Max duration of the simulation
 })
 
 while True:

@@ -6,9 +6,6 @@
 #include "ControllerThread.hpp"
 #include "SafteyThread.hpp"
 
-// const double FREQ = 5;          // Hz
-// const double FREQ_SENSOR = 20;  // Hz
-// const double FREQ_CONTROL = 10; // Hz
 
 int main(void)
 {
@@ -17,26 +14,26 @@ int main(void)
     // std::mutex mutexGlobalId;
     SharedData sharedData;
 
-    DataLogger dataLogger({"acceleration", "egoSpeed", "leaderSpeed", "distanceLeader", "safteyGap"}, "dataLog.csv");
+    Logger dataLogger({"acceleration", "egoSpeed", "leaderSpeed", "distanceLeader", "safteyGap"}, "dataLog.csv");
     dataLogger.startUDPConnection();
 
-    DataLogger timesLoggerSensor({"period", "cycle"}, "timesSensorLog.csv");
-    DataLogger timesLoggerControl({"period", "cycle"}, "timesControlLog.csv");
-    DataLogger timesLoggerSaftey({"period", "cycle"}, "timesSafteyLog.csv");
+    Logger logTimesSensor({"Sensor/period", "Sensor/cycle"}, "timesSensorLog.csv");
+    Logger logTimesControl({"Control/period", "Control/cycle"}, "timesControlLog.csv");
+    Logger logTimesSaftey({"Saftey/period", "Saftey/cycle"}, "timesSafteyLog.csv");
 
-    PeriodicTaskMonitor periodicMonitorSensor("Sensor", 20, timesLoggerSensor);
-    PeriodicTaskMonitor periodicMonitorControl("Control", 10, timesLoggerControl);
-    PeriodicTaskMonitor periodicMonitorSaftey("Saftey", 5, timesLoggerSaftey);
+    TaskWatch taskWatchSensor("Sensor", 20, logTimesSensor);
+    TaskWatch taskWatchControl("Control", 10, logTimesControl);
+    TaskWatch taskWatchSaftey("Saftey", 5, logTimesSaftey);
 
     json resp = client.sendComandAndRecive({{"cmd", "reset"}});
 
-    SensorThread sensorThread(sharedData, client, periodicMonitorSensor);
+    SensorThread sensorThread(sharedData, client, taskWatchSensor);
     sensorThread.start();
 
-    ControllerThread controllerThread(sharedData, dataLogger, periodicMonitorControl);
-    controllerThread.start(30); // 30 m/s
+    ControllerThread controllerThread(sharedData, dataLogger, taskWatchControl);
+    controllerThread.start(30); // Target Speed: 30 m/s
 
-    SafteyThread safteyThread(sharedData, sensorThread, controllerThread, client, periodicMonitorSaftey);
+    SafteyThread safteyThread(sharedData, sensorThread, controllerThread, client, taskWatchSaftey);
     safteyThread.start();
 
     sensorThread.join();

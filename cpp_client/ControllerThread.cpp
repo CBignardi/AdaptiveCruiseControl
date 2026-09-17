@@ -13,8 +13,8 @@ const double TIME_GAP = 1.5; // seconds
 const double MAX_DECELERATION = -4.0; // m/s^2
 const double MAX_ACELERATION = 2.0;   // m/s^2
 
-ControllerThread::ControllerThread(SharedData &aSharedData, DataLogger &aDataLogger, PeriodicTaskMonitor &aPeriodicTaskMonitor)
-    : mSharedData(aSharedData), mDataLogger(aDataLogger), mPeriodicTaskMonitor(aPeriodicTaskMonitor), mThread(&ControllerThread::run, this)
+ControllerThread::ControllerThread(SharedData &aSharedData, Logger &aDataLogger, TaskWatch &aPeriodicTaskMonitor)
+    : mSharedData(aSharedData), mDataLogger(aDataLogger), mTaskWatch(aPeriodicTaskMonitor), mThread(&ControllerThread::run, this)
 {
 }
 
@@ -50,7 +50,7 @@ void ControllerThread::run()
     while (mRunning.load())
     {
         // START of the function
-        mPeriodicTaskMonitor.startCycle();
+        mTaskWatch.startCycle();
 
         // Save the values in local variables
         mSharedData.mMutexSim.lock();
@@ -59,7 +59,6 @@ void ControllerThread::run()
         double velocityLeader = mSharedData.mSimData.mVelocityLeader;
         double egoSpeed = mSharedData.mSimData.mEgoSpeed;
         mSharedData.mMutexSim.unlock();
-
 
         if (actualId > lastId)
         {
@@ -98,10 +97,11 @@ void ControllerThread::run()
             mSharedData.mAcceleration.store(acceleration);
 
             mDataLogger.log({acceleration, egoSpeed, velocityLeader, distanceToLeader, safteyGap});
+            mDataLogger.flush();
         }
 
         // END of the function
-        mPeriodicTaskMonitor.endCycle();
-        mPeriodicTaskMonitor.sleep();
+        mTaskWatch.endCycle();
+        mTaskWatch.sleep();
     }
 }

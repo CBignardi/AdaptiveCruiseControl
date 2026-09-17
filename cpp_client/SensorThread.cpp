@@ -7,8 +7,8 @@
 const double MEAN = 0.0;
 const double STDDEV = 0.1;
 
-SensorThread::SensorThread(SharedData &aSharedData, EnvClient &aClient, PeriodicTaskMonitor &aPeriodicTaskMonitor)
-    : mSharedData(aSharedData), mClient(aClient), mPeriodicTaskMonitor(aPeriodicTaskMonitor), mThread(&SensorThread::run, this)
+SensorThread::SensorThread(SharedData &aSharedData, EnvClient &aClient, TaskWatch &aTaskWatch)
+    : mSharedData(aSharedData), mClient(aClient), mTaskWatch(aTaskWatch), mThread(&SensorThread::run, this)
 {
 }
 
@@ -74,7 +74,7 @@ void SensorThread::run()
     while (mRunning.load())
     {
         // START of the function
-        mPeriodicTaskMonitor.startCycle();
+        mTaskWatch.startCycle();
 
         double acceleration = mSharedData.mAcceleration.load();
 
@@ -116,7 +116,7 @@ void SensorThread::run()
         mSharedData.mMutexSim.unlock();
 
         // END of the function
-        mPeriodicTaskMonitor.endCycle();
-        mPeriodicTaskMonitor.sleep();
+        mTaskWatch.endCycle();
+        mTaskWatch.sleep();
     }
 }

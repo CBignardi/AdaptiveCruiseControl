@@ -1,9 +1,9 @@
 #include "SafteyThread.hpp"
 
 SafteyThread::SafteyThread(SharedData &aSharedData, SensorThread &aSensorThread, ControllerThread &aControlThread, EnvClient &aClient,
-                           PeriodicTaskMonitor &aPeriodicTaskMonitor)
+                           TaskWatch &aPeriodicTaskMonitor)
     : mSharedData(aSharedData), mSensorThread(aSensorThread), mControllerThread(aControlThread), mClient(aClient), mThread(&SafteyThread::run, this),
-      mPeriodicTaskMonitor(aPeriodicTaskMonitor)
+      mTaskWatch(aPeriodicTaskMonitor)
 {
 }
 
@@ -22,7 +22,7 @@ void SafteyThread::join()
     mThread.join();
 }
 
-void checkDeadlines(PeriodicTaskMonitor &aPeriodicMonitor, const std::string aName)
+void checkDeadlines(TaskWatch &aPeriodicMonitor, const std::string aName)
 {
     // ASSUMPION: the threads have the deadline equals to the period.
 
@@ -70,7 +70,7 @@ void SafteyThread::run()
     while (mRunning.load())
     {
         // START of the function
-        mPeriodicTaskMonitor.startCycle();
+        mTaskWatch.startCycle();
 
         mSharedData.mMutexSim.lock();
         size_t actualId = mSharedData.mSimData.mId;
@@ -91,12 +91,13 @@ void SafteyThread::run()
                 mClient.sendComandAndRecive({{"cmd", "close"}});
                 mClient.mMutex.unlock();
             }
+            lastId = actualId;
         }
 
         // END of the function
         // std::cout << "fine ciclo\n";
-        mPeriodicTaskMonitor.endCycle();
+        mTaskWatch.endCycle();
         // std::cout << "fine ciclo 2\n";
-        mPeriodicTaskMonitor.sleep();
+        mTaskWatch.sleep();
     }
 }
