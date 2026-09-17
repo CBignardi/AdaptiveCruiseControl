@@ -2,13 +2,13 @@
 
 #include <mutex>
 #include <thread>
+#include <chrono>
 
 #include <zmq.hpp>
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include <algorithm>
 #include <vector>
-#include <queue>
 #include <atomic>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -28,6 +28,7 @@ struct SimData
     double mVelocityLeader;
 };
 
+// Helped by AI
 class Logger
 {
 private:
@@ -122,6 +123,7 @@ public:
     void incrementID() { mSimData.mId++; }
 };
 
+// Helped by AI
 class EnvClient
 {
 private:
@@ -146,12 +148,12 @@ public:
     }
 };
 
+// Helped by AI
 class TaskWatch
 {
     using Clock = std::chrono::steady_clock;
 
 private:
-    std::string mName;
     double mPeriod;
 
     Clock::time_point mStartTime;
@@ -163,7 +165,7 @@ private:
     bool mHasStartedLogging = false;
 
 public:
-    TaskWatch(std::string aName, double aFreq, Logger &aDataLogger) : mName(aName), mPeriod(1 / aFreq), mDataLogger(aDataLogger) {}
+    TaskWatch(double aFreq, Logger &aDataLogger) : mPeriod(1 / aFreq), mDataLogger(aDataLogger) {}
 
     std::mutex mMutex;
     std::vector<double> mVecPeriods;

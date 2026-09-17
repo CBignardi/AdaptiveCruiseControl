@@ -1,16 +1,13 @@
 #pragma once
 
-#include <thread>
-#include <mutex>
-#include <chrono>
-#include <atomic>
+#include <random>
 
 #include "utils.hpp"
 
-struct LeaderDistanceVelocity
+struct LeaderValues
 {
     double mDistanceToLeader = 0;
-    double mVelocity = 0;
+    double mSpeed = 0;
 };
 
 struct VehicleAttr

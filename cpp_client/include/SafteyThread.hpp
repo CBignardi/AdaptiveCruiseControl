@@ -1,10 +1,5 @@
 #pragma once
 
-#include <thread>
-#include <mutex>
-#include <chrono>
-#include <atomic>
-
 #include "utils.hpp"
 #include "SensorThread.hpp"
 #include "ControllerThread.hpp"
@@ -13,7 +8,7 @@ class SafteyThread
 {
 public:
     SafteyThread(SharedData &aSharedData, SensorThread &aSensorThread, ControllerThread &aControlThread, EnvClient &aClient,
-                 TaskWatch &aPeriodicTaskMonitor);
+                 TaskWatch &aTaskWatchSaftey, TaskWatch &aTaskWatchSensor, TaskWatch &aTaskWatchControl);
 
     void close();
 
@@ -28,7 +23,9 @@ private:
     SensorThread &mSensorThread;
     ControllerThread &mControllerThread;
     EnvClient &mClient;
-    TaskWatch &mTaskWatch;
+    TaskWatch &mTaskWatchSaftey;
+    TaskWatch &mTaskWatchSensor;
+    TaskWatch &mTaskWatchControl;
 
     std::thread mThread;
 

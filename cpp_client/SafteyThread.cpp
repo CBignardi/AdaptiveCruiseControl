@@ -1,9 +1,9 @@
 #include "SafteyThread.hpp"
 
 SafteyThread::SafteyThread(SharedData &aSharedData, SensorThread &aSensorThread, ControllerThread &aControlThread, EnvClient &aClient,
-                           TaskWatch &aPeriodicTaskMonitor)
+                           TaskWatch &aTaskWatchSaftey, TaskWatch &aTaskWatchSensor, TaskWatch &aTaskWatchControl)
     : mSharedData(aSharedData), mSensorThread(aSensorThread), mControllerThread(aControlThread), mClient(aClient), mThread(&SafteyThread::run, this),
-      mTaskWatch(aPeriodicTaskMonitor)
+      mTaskWatchSaftey(aTaskWatchSaftey), mTaskWatchSensor(aTaskWatchSensor), mTaskWatchControl(aTaskWatchControl)
 {
 }
 
@@ -22,7 +22,7 @@ void SafteyThread::join()
     mThread.join();
 }
 
-void checkDeadlines(TaskWatch &aPeriodicMonitor, const std::string aName)
+void checkDeadlines(TaskWatch &aTaskWatch, const std::string aName)
 {
     // ASSUMPION: the threads have the deadline equals to the period.
 
@@ -30,14 +30,20 @@ void checkDeadlines(TaskWatch &aPeriodicMonitor, const std::string aName)
     std::vector<double> vecCycles;
 
     // Copy the vectors in the local variables
-    aPeriodicMonitor.mMutex.lock();
-    std::copy(aPeriodicMonitor.mVecPeriods.begin(), aPeriodicMonitor.mVecPeriods.end(), vecPeriods.begin());
-    aPeriodicMonitor.mVecPeriods.clear();
-    std::copy(aPeriodicMonitor.mVecCycles.begin(), aPeriodicMonitor.mVecCycles.end(), vecCycles.begin());
-    aPeriodicMonitor.mVecCycles.clear();
-    aPeriodicMonitor.mMutex.unlock();
+    aTaskWatch.mMutex.lock();
 
-    auto period = aPeriodicMonitor.getPeriod();
+    vecPeriods.resize(aTaskWatch.mVecPeriods.size());
+    std::copy(aTaskWatch.mVecPeriods.begin(), aTaskWatch.mVecPeriods.end(), vecPeriods.begin());
+    aTaskWatch.mVecPeriods.clear();
+
+    vecCycles.resize(aTaskWatch.mVecCycles.size());
+    std::copy(aTaskWatch.mVecCycles.begin(), aTaskWatch.mVecCycles.end(), vecCycles.begin());
+    aTaskWatch.mVecCycles.clear();
+
+    aTaskWatch.mMutex.unlock();
+
+
+    auto period = aTaskWatch.getPeriod() * 1000.0; // Convert to millisecond
 
     // The two vectors have the same size
     for (int i = 0; i < vecPeriods.size(); i++)
@@ -70,7 +76,7 @@ void SafteyThread::run()
     while (mRunning.load())
     {
         // START of the function
-        mTaskWatch.startCycle();
+        mTaskWatchSaftey.startCycle();
 
         mSharedData.mMutexSim.lock();
         size_t actualId = mSharedData.mSimData.mId;
@@ -94,10 +100,12 @@ void SafteyThread::run()
             lastId = actualId;
         }
 
+        checkDeadlines(mTaskWatchSensor, "Sensor");
+        checkDeadlines(mTaskWatchControl, "Control");
+        checkDeadlines(mTaskWatchSaftey, "Saftey");
+
         // END of the function
-        // std::cout << "fine ciclo\n";
-        mTaskWatch.endCycle();
-        // std::cout << "fine ciclo 2\n";
-        mTaskWatch.sleep();
+        mTaskWatchSaftey.endCycle();
+        mTaskWatchSaftey.sleep();
     }
 }

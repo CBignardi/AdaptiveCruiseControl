@@ -1,9 +1,6 @@
 #include "SensorThread.hpp"
-#include <limits>
-#include <vector>
-#include <random>
 
-// Parameters
+// Parameters for the noise in the data
 const double MEAN = 0.0;
 const double STDDEV = 0.1;
 
@@ -27,18 +24,18 @@ void SensorThread::join()
     mThread.join();
 }
 
-LeaderDistanceVelocity calculateVelocityAndDistanceToLeader(std::vector<VehicleAttr> &aVectorVehicleAttr)
+LeaderValues calculateVelocityAndDistanceToLeader(std::vector<VehicleAttr> &aVectorVehicleAttr)
 {
     double minDistanceToLeader = std::numeric_limits<double>::max();
     double velocityLeader;
     double egoYPos = aVectorVehicleAttr.at(0).mY;
     double egoXPos = aVectorVehicleAttr.at(0).mX;
 
-    for (int i = 1; i < aVectorVehicleAttr.size(); i++) // exclude ego pos
+    for (int i = 1; i < aVectorVehicleAttr.size(); i++) // i = 1 because I exclude the ego pos
     {
         auto actualVehicle = aVectorVehicleAttr.at(i);
 
-        // if the vehicle isn't in my lane OR the presence is lower than 0.5, we SKIP this vehicle
+        // If the vehicle isn't in my lane OR the presence is lower than 0.5, I SKIP this vehicle
         if ((std::round(actualVehicle.mY) != egoYPos) || (actualVehicle.mPresence < 0.5))
         {
             continue;
@@ -51,11 +48,11 @@ LeaderDistanceVelocity calculateVelocityAndDistanceToLeader(std::vector<VehicleA
         }
     }
 
-    LeaderDistanceVelocity retValue;
+    LeaderValues retValue;
     if (minDistanceToLeader != std::numeric_limits<double>::max())
     {
         retValue.mDistanceToLeader = minDistanceToLeader;
-        retValue.mVelocity = velocityLeader;
+        retValue.mSpeed = velocityLeader;
     }
 
     return retValue;
@@ -82,7 +79,7 @@ void SensorThread::run()
         json resp = mClient.sendComandAndRecive({{"cmd", "step"}, {"accel", acceleration}});
         mClient.mMutex.unlock();
 
-        // fill the array with the Vehicles Attributes
+        // Fill the array with the Vehicles Attributes
         std::vector<VehicleAttr> vVehicleAttr;
         VehicleAttr vehicleAttr;
         for (const auto row : resp["obs"])
@@ -95,23 +92,23 @@ void SensorThread::run()
             vVehicleAttr.push_back(vehicleAttr);
         }
 
-        // Add noise to the value
+        // Generate some noise in the values
         std::random_device rd;
         std::mt19937 generator(rd());
         std::normal_distribution<double> dist(MEAN, STDDEV);
 
         double egoSpeed = vVehicleAttr.at(0).mVx;
-        LeaderDistanceVelocity leaderDistanceVelocity = calculateVelocityAndDistanceToLeader(vVehicleAttr);
+        LeaderValues leaderDistanceVelocity = calculateVelocityAndDistanceToLeader(vVehicleAttr);
 
         // Add noise
         if (leaderDistanceVelocity.mDistanceToLeader != 0)
         {
             leaderDistanceVelocity.mDistanceToLeader += dist(generator);
-            leaderDistanceVelocity.mVelocity += dist(generator);
+            leaderDistanceVelocity.mSpeed += dist(generator);
         }
 
         mSharedData.mMutexSim.lock();
-        mSharedData.setAll(egoSpeed, resp["terminated"], resp["truncated"], leaderDistanceVelocity.mDistanceToLeader, leaderDistanceVelocity.mVelocity);
+        mSharedData.setAll(egoSpeed, resp["terminated"], resp["truncated"], leaderDistanceVelocity.mDistanceToLeader, leaderDistanceVelocity.mSpeed);
         mSharedData.incrementID();
         mSharedData.mMutexSim.unlock();
 

@@ -1,16 +1,11 @@
 #pragma once
 
-#include <thread>
-#include <mutex>
-#include <chrono>
-#include <atomic>
-
 #include "utils.hpp"
 
 class ControllerThread
 {
 public:
-    ControllerThread(SharedData &aSharedData, Logger& aDataLogger, TaskWatch &aPeriodicTaskMonitor);
+    ControllerThread(SharedData &aSharedData, Logger &aDataLogger, TaskWatch &aPeriodicTaskMonitor);
 
     void close();
 
@@ -26,7 +21,7 @@ private:
 
     std::thread mThread;
 
-    double mVelocity;
+    double mSpeed;
 
     void run();
 };

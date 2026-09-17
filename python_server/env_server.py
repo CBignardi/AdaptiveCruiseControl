@@ -1,6 +1,7 @@
 import zmq, gymnasium as gym, highway_env
 import numpy as np
 
+# Helped by AI 
 
 context = zmq.Context()
 socket = context.socket(zmq.REP)

@@ -1,5 +1,4 @@
 #include "ControllerThread.hpp"
-#include <limits>
 
 // Parameters
 const double KP_CRUICE = 0.035;
@@ -25,7 +24,7 @@ void ControllerThread::close()
 
 void ControllerThread::start(double aVelocity)
 {
-    mVelocity = aVelocity;
+    mSpeed = aVelocity;
     mRunning.store(true);
 }
 
@@ -62,43 +61,35 @@ void ControllerThread::run()
 
         if (actualId > lastId)
         {
-            lastId = actualId;
-
             double acceleration;
 
             bool hasLeader = (distanceToLeader > 0);
             double safteyGap = MIN_GAP + TIME_GAP * egoSpeed;
 
-            std::string state;
-
             if (!hasLeader || distanceToLeader > (safteyGap * 1.5))
             { // Normal cruice control
-                state = "C";
-
-                acceleration = KP_CRUICE * (mVelocity - egoSpeed);
+                acceleration = KP_CRUICE * (mSpeed - egoSpeed);
             }
             else
             { // Car in front, Gap cruice control
-                state = "G";
-
                 double gapError = distanceToLeader - safteyGap;
                 double speedDiff = velocityLeader - egoSpeed;
 
                 acceleration = KP_GAP_GAP * gapError + KP_SPEED_GAP * speedDiff;
 
-                if ((egoSpeed >= mVelocity) && (acceleration > 0))
+                if ((egoSpeed >= mSpeed) && (acceleration > 0))
                 {
                     acceleration = 0;
                 }
             }
 
             acceleration = std::clamp(acceleration, MAX_DECELERATION, MAX_ACELERATION);
-
             mSharedData.mAcceleration.store(acceleration);
 
             mDataLogger.log({acceleration, egoSpeed, velocityLeader, distanceToLeader, safteyGap});
             mDataLogger.flush();
         }
+        lastId = actualId;
 
         // END of the function
         mTaskWatch.endCycle();
