@@ -3,30 +3,30 @@
  <tabbed_widget name="Main Window" parent="main_window">
   <Tab containers="1" tab_name="tab1">
    <Container>
-    <DockSplitter count="2" orientation="-" sizes="0.501121;0.498879">
-     <DockSplitter count="2" orientation="|" sizes="0.5;0.5">
-      <DockArea name="...">
+    <DockSplitter count="2" orientation="-" sizes="0.507848;0.492152">
+     <DockSplitter count="2" orientation="|" sizes="0.448138;0.551862">
+      <DockArea name="Speed">
        <plot flip_x="false" flip_y="false" line_width="1.0" mode="TimeSeries">
-        <range bottom="-0.751865" left="0.000000" right="120.118747" top="30.826450"/>
+        <range bottom="21.865725" left="60.392426" right="90.332926" top="23.221275"/>
         <limitY/>
-        <curve color="#1f33b4" name="egoSpeed"/>
-        <curve color="#d63327" name="leaderSpeed"/>
+        <curve color="#2b1fb4" name="/egoSpeed"/>
+        <curve color="#d62728" name="/leaderSpeed"/>
        </plot>
       </DockArea>
-      <DockArea name="...">
+      <DockArea name="Distance">
        <plot flip_x="false" flip_y="false" line_width="1.0" mode="TimeSeries">
-        <range bottom="-2.649950" left="0.158540" right="119.751119" top="108.647944"/>
+        <range bottom="38.349393" left="60.392426" right="90.332926" top="39.492108"/>
         <limitY/>
-        <curve color="#c91a1f" name="distanceLeader"/>
-        <curve color="#0e45ff" name="safteyGap"/>
+        <curve color="#bd222e" name="/distanceLeader"/>
+        <curve color="#1a29c9" name="/safteyGap"/>
        </plot>
       </DockArea>
      </DockSplitter>
-     <DockArea name="...">
+     <DockArea name="Acceleration">
       <plot flip_x="false" flip_y="false" line_width="1.0" mode="TimeSeries">
-       <range bottom="-0.348000" left="0.158540" right="119.751119" top="0.383437"/>
+       <range bottom="-0.032406" left="60.392426" right="90.332926" top="0.042105"/>
        <limitY/>
-       <curve color="#bc489a" name="acceleration"/>
+       <curve color="#cf17be" name="/acceleration"/>
       </plot>
      </DockArea>
     </DockSplitter>
@@ -35,7 +35,7 @@
   <currentTabIndex index="0"/>
  </tabbed_widget>
  <use_relative_time_offset enabled="1"/>
- <streaming_buffer_size value="10"/>
+ <streaming_buffer_size value="30"/>
  <!-- - - - - - - - - - - - - - - -->
  <!-- - - - - - - - - - - - - - - -->
  <Plugins>
@@ -169,6 +169,7 @@ end
    </plugin>
   </fileInfo>
  </previouslyLoaded_Datafiles>
+ <previouslyLoaded_Streamer name="UDP Server"/>
  <!-- - - - - - - - - - - - - - - -->
  <customMathEquations/>
  <snippets/>

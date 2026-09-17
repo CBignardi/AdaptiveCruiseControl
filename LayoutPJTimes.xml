@@ -3,32 +3,55 @@
  <tabbed_widget name="Main Window" parent="main_window">
   <Tab containers="1" tab_name="tab1">
    <Container>
-    <DockSplitter count="2" orientation="-" sizes="0.502242;0.497758">
-     <DockSplitter count="2" orientation="|" sizes="0.448138;0.551862">
-      <DockArea name="Speed">
+    <DockSplitter count="3" orientation="-" sizes="0.333333;0.333333;0.333333">
+     <DockSplitter count="2" orientation="|" sizes="0.5;0.5">
+      <DockArea name="Period - Control">
        <plot flip_x="false" flip_y="false" line_width="1.0" mode="TimeSeries">
-        <range bottom="20.630855" left="1789117652.545326" right="1789117682.476916" top="23.816345"/>
+        <range bottom="99.999838" left="0.000000" right="53.324656" top="100.387253"/>
         <limitY/>
-        <curve color="#1f77b4" name="/egoSpeed"/>
-        <curve color="#d62728" name="/leaderSpeed"/>
+        <curve color="#1ac938" name="/Control/period"/>
        </plot>
       </DockArea>
-      <DockArea name="Distance">
+      <DockArea name="Cycle - Control">
        <plot flip_x="false" flip_y="false" line_width="1.0" mode="TimeSeries">
-        <range bottom="33.742805" left="1789117652.545326" right="1789117682.476916" top="134.097395"/>
+        <range bottom="-0.095963" left="0.000000" right="53.324656" top="5.533091"/>
         <limitY/>
-        <curve color="#1a27c9" name="/safteyGap"/>
-        <curve color="#ff0e1e" name="/distanceLeader"/>
+        <curve color="#ff7f0e" name="/Control/cycle"/>
        </plot>
       </DockArea>
      </DockSplitter>
-     <DockArea name="Acceleration">
-      <plot flip_x="false" flip_y="false" line_width="1.0" mode="TimeSeries">
-       <range bottom="-0.035616" left="1789117652.545326" right="1789117682.476916" top="0.314743"/>
-       <limitY/>
-       <curve color="#f14cc1" name="/acceleration"/>
-      </plot>
-     </DockArea>
+     <DockSplitter count="2" orientation="|" sizes="0.5;0.5">
+      <DockArea name="Period - Saftey">
+       <plot flip_x="false" flip_y="false" line_width="1.0" mode="TimeSeries">
+        <range bottom="200.022665" left="0.000000" right="53.324656" top="200.405533"/>
+        <limitY/>
+        <curve color="#f14cc1" name="/Saftey/period"/>
+       </plot>
+      </DockArea>
+      <DockArea name="Cycle - Saftey">
+       <plot flip_x="false" flip_y="false" line_width="1.0" mode="TimeSeries">
+        <range bottom="0.000217" left="0.000000" right="53.324656" top="0.009312"/>
+        <limitY/>
+        <curve color="#9467bd" name="/Saftey/cycle"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter count="2" orientation="|" sizes="0.5;0.5">
+      <DockArea name="Period - Sensor">
+       <plot flip_x="false" flip_y="false" line_width="1.0" mode="TimeSeries">
+        <range bottom="50.019390" left="0.000000" right="53.324656" top="50.509871"/>
+        <limitY/>
+        <curve color="#17becf" name="/Sensor/period"/>
+       </plot>
+      </DockArea>
+      <DockArea name="Cycle - Sensor">
+       <plot flip_x="false" flip_y="false" line_width="1.0" mode="TimeSeries">
+        <range bottom="7.522286" left="0.000000" right="53.324656" top="29.070153"/>
+        <limitY/>
+        <curve color="#bcbd22" name="/Sensor/cycle"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
     </DockSplitter>
    </Container>
   </Tab>
@@ -163,13 +186,22 @@ end
  </Plugins>
  <!-- - - - - - - - - - - - - - - -->
  <previouslyLoaded_Datafiles>
-  <fileInfo filename="build/bin/dataLog.csv" prefix="">
+  <fileInfo filename="build/bin/timesSafteyLog.csv" prefix="">
+   <plugin ID="DataLoad CSV">
+    <parameters delimiter="0" skip_rows="0" time_axis="timestamp"/>
+   </plugin>
+  </fileInfo>
+  <fileInfo filename="build/bin/timesControlLog.csv" prefix="">
+   <plugin ID="DataLoad CSV">
+    <parameters delimiter="0" skip_rows="0" time_axis="timestamp"/>
+   </plugin>
+  </fileInfo>
+  <fileInfo filename="build/bin/timesSensorLog.csv" prefix="">
    <plugin ID="DataLoad CSV">
     <parameters delimiter="0" skip_rows="0" time_axis="timestamp"/>
    </plugin>
   </fileInfo>
  </previouslyLoaded_Datafiles>
- <previouslyLoaded_Streamer name="UDP Server"/>
  <!-- - - - - - - - - - - - - - - -->
  <customMathEquations/>
  <snippets/>
