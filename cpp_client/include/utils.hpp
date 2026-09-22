@@ -61,13 +61,13 @@ public:
         inet_pton(AF_INET, "127.0.0.1", &mAddr.sin_addr);
     }
 
-    double logCSV(const std::vector<double> &values)
+    double logCSV(const std::vector<double> &aValues)
     {
         double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - mStartTime).count();
 
         // Write in the .csv file
         mFile << std::fixed << std::setprecision(6) << t;
-        for (double v : values)
+        for (double v : aValues)
         {
             mFile << "," << v;
         }
@@ -76,18 +76,18 @@ public:
         return t;
     }
 
-    void log(const std::vector<double> &values)
+    void log(const std::vector<double> &aValues)
     {
         // Write in the .csv file
-        double t = logCSV(values);
+        double t = logCSV(aValues);
 
         // Streaming to PlotJuggler
         std::ostringstream udpMsg;
         udpMsg << "{";
         udpMsg << "\"timestamp\":" << t;
-        for (size_t i = 0; i < mFields.size() && i < values.size(); ++i)
+        for (size_t i = 0; i < mFields.size() && i < aValues.size(); ++i)
         {
-            udpMsg << ",\"" << mFields[i] << "\":" << values[i];
+            udpMsg << ",\"" << mFields[i] << "\":" << aValues[i];
         }
         udpMsg << "}";
         std::string payload = udpMsg.str();
@@ -161,11 +161,11 @@ private:
 
     std::chrono::duration<double, std::milli> mLastPeriod;
     std::chrono::duration<double, std::milli> mLastCycle;
-    Logger &mDataLogger;
+    Logger &mLogger;
     bool mHasStartedLogging = false;
 
 public:
-    TaskWatch(double aFreq, Logger &aDataLogger) : mPeriod(1 / aFreq), mDataLogger(aDataLogger) {}
+    TaskWatch(double aFreq, Logger &aLogger) : mPeriod(1 / aFreq), mLogger(aLogger) {}
 
     std::mutex mMutex;
     std::vector<double> mVecPeriods;
@@ -195,8 +195,8 @@ public:
         // Log the data (skip the first log, because mLastPeriod will be not initialize)
         if (mHasStartedLogging)
         {
-            mDataLogger.logCSV({mLastPeriod.count(), mLastCycle.count()});
-            mDataLogger.flush();
+            mLogger.logCSV({mLastPeriod.count(), mLastCycle.count()});
+            mLogger.flush();
         }
         mHasStartedLogging = true;
     }

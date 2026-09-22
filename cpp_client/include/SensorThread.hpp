@@ -32,7 +32,6 @@ public:
     void join();
 
 private:
-    double mFreq;
     std::atomic<bool> mRunning{false};
     SharedData &mSharedData;
     EnvClient &mClient;

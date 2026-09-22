@@ -36,7 +36,7 @@ void ControllerThread::join()
 void ControllerThread::run()
 {
     sched_param sch;
-    sch.sched_priority = 35;
+    sch.sched_priority = 40;
     int result = pthread_setschedparam(mThread.native_handle(), SCHED_FIFO, &sch);
     if (result != 0)
     {

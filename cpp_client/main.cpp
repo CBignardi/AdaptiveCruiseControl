@@ -18,7 +18,7 @@ int main(void)
 
     // Define the watcher for the deadline of the tasks
     TaskWatch taskWatchSensor(20, logTimesSensor);
-    TaskWatch taskWatchControl(5, logTimesControl);
+    TaskWatch taskWatchControl(10, logTimesControl);
     TaskWatch taskWatchSaftey(5, logTimesSaftey);
 
     // Reset the simulation
