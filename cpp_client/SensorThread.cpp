@@ -2,7 +2,7 @@
 
 // Parameters for the noise in the data
 const double MEAN = 0.0;
-const double STDDEV = 0.1;
+const double STDDEV = 0.2;
 
 SensorThread::SensorThread(SharedData &aSharedData, EnvClient &aClient, TaskWatch &aTaskWatch)
     : mSharedData(aSharedData), mClient(aClient), mTaskWatch(aTaskWatch), mThread(&SensorThread::run, this)

@@ -10,7 +10,7 @@ int main(void)
     SharedData sharedData;
 
     // Define all the logger objects
-    Logger dataLogger({"acceleration", "egoSpeed", "leaderSpeed", "distanceLeader", "safteyGap"}, "dataLog.csv");
+    Logger dataLogger({"acceleration", "egoSpeed", "leaderSpeed", "distanceLeader", "dinamicMinGap", "filteredLeaderSpeed", "filteredDistanceLeader"}, "dataLog.csv");
     dataLogger.startUDPConnection();
     Logger logTimesSensor({"Sensor/period", "Sensor/cycle"}, "timesSensorLog.csv");
     Logger logTimesControl({"Control/period", "Control/cycle"}, "timesControlLog.csv");
