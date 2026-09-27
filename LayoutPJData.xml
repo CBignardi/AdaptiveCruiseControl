@@ -3,30 +3,52 @@
  <tabbed_widget name="Main Window" parent="main_window">
   <Tab containers="1" tab_name="tab1">
    <Container>
-    <DockSplitter count="2" orientation="-" sizes="0.507848;0.492152">
-     <DockSplitter count="2" orientation="|" sizes="0.448138;0.551862">
+    <DockSplitter count="2" orientation="-" sizes="0.510662;0.489338">
+     <DockSplitter count="2" orientation="|" sizes="0.447473;0.552527">
       <DockArea name="Speed">
        <plot flip_x="false" flip_y="false" line_width="1.0" mode="TimeSeries">
-        <range bottom="21.865725" left="60.392426" right="90.332926" top="23.221275"/>
+        <range bottom="21.953070" left="0.000000" right="29.942500" top="23.340330"/>
         <limitY/>
-        <curve color="#2b1fb4" name="/egoSpeed"/>
+        <curve color="#1f40b4" name="/egoSpeed"/>
         <curve color="#d62728" name="/leaderSpeed"/>
        </plot>
       </DockArea>
       <DockArea name="Distance">
        <plot flip_x="false" flip_y="false" line_width="1.0" mode="TimeSeries">
-        <range bottom="38.349393" left="60.392426" right="90.332926" top="39.492108"/>
+        <range bottom="32.222560" left="0.000000" right="29.942500" top="46.147240"/>
         <limitY/>
-        <curve color="#bd222e" name="/distanceLeader"/>
-        <curve color="#1a29c9" name="/safteyGap"/>
+        <curve color="#c91a1d" name="/distanceLeader"/>
+        <curve color="#0e37ff" name="/dinamicMinGap"/>
        </plot>
       </DockArea>
      </DockSplitter>
      <DockArea name="Acceleration">
       <plot flip_x="false" flip_y="false" line_width="1.0" mode="TimeSeries">
-       <range bottom="-0.032406" left="60.392426" right="90.332926" top="0.042105"/>
+       <range bottom="-0.088264" left="0.000000" right="29.942500" top="0.121866"/>
        <limitY/>
-       <curve color="#cf17be" name="/acceleration"/>
+       <curve color="#ff00d1" name="/acceleration"/>
+      </plot>
+     </DockArea>
+    </DockSplitter>
+   </Container>
+  </Tab>
+  <Tab containers="1" tab_name="tab2">
+   <Container>
+    <DockSplitter count="2" orientation="-" sizes="0.500561;0.499439">
+     <DockArea name="Distance">
+      <plot flip_x="false" flip_y="false" line_width="1.0" mode="TimeSeries">
+       <range bottom="42.104790" left="0.000000" right="29.942500" top="45.906210"/>
+       <limitY/>
+       <curve color="#3917cf" name="/filteredDistanceLeader"/>
+       <curve color="#c9241a" name="/distanceLeader"/>
+      </plot>
+     </DockArea>
+     <DockArea name="Speed">
+      <plot flip_x="false" flip_y="false" line_width="1.0" mode="TimeSeries">
+       <range bottom="21.953070" left="2.002300" right="31.944800" top="23.340330"/>
+       <limitY/>
+       <curve color="#6777bd" name="/filteredLeaderSpeed"/>
+       <curve color="#d62728" name="/leaderSpeed"/>
       </plot>
      </DockArea>
     </DockSplitter>
@@ -162,13 +184,7 @@ end
   <plugin ID="ROS2 Topic Re-Publisher"/>
  </Plugins>
  <!-- - - - - - - - - - - - - - - -->
- <previouslyLoaded_Datafiles>
-  <fileInfo filename="build/bin/dataLog.csv" prefix="">
-   <plugin ID="DataLoad CSV">
-    <parameters delimiter="0" skip_rows="0" time_axis="timestamp"/>
-   </plugin>
-  </fileInfo>
- </previouslyLoaded_Datafiles>
+ <previouslyLoaded_Datafiles/>
  <previouslyLoaded_Streamer name="UDP Server"/>
  <!-- - - - - - - - - - - - - - - -->
  <customMathEquations/>
