@@ -13,7 +13,7 @@ struct LeaderValues
 struct VehicleAttr
 {
 public:
-    double mPresence;
+    double mPresence; // 1 Real vehicle, 0 Placeholder
     double mX;
     double mY;
     double mVx;

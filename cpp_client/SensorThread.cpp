@@ -35,8 +35,8 @@ LeaderValues calculateVelocityAndDistanceToLeader(std::vector<VehicleAttr> &aVec
     {
         auto actualVehicle = aVectorVehicleAttr.at(i);
 
-        // If the vehicle isn't in my lane OR the presence is lower than 0.5, I SKIP this vehicle
-        if ((std::round(actualVehicle.mY) != egoYPos) || (actualVehicle.mPresence < 0.5))
+        // If the vehicle isn't in my lane OR the presence is 0, I SKIP this vehicle
+        if ((std::round(actualVehicle.mY) != egoYPos) || (actualVehicle.mPresence == 0))
         {
             continue;
         }
@@ -92,13 +92,13 @@ void SensorThread::run()
             vVehicleAttr.push_back(vehicleAttr);
         }
 
+        double egoSpeed = vVehicleAttr.at(0).mVx;
+        LeaderValues leaderDistanceVelocity = calculateVelocityAndDistanceToLeader(vVehicleAttr);
+
         // Generate some noise in the values
         std::random_device rd;
         std::mt19937 generator(rd());
         std::normal_distribution<double> dist(MEAN, STDDEV);
-
-        double egoSpeed = vVehicleAttr.at(0).mVx;
-        LeaderValues leaderDistanceVelocity = calculateVelocityAndDistanceToLeader(vVehicleAttr);
 
         // Add noise
         if (leaderDistanceVelocity.mDistanceToLeader != 0)

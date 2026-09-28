@@ -6,7 +6,7 @@ const double TIME_GAP = 1.6;          // seconds
 const double MAX_DECELERATION = 1.67; // m/s^2 (must be positive number)
 const double MAX_ACELERATION = 0.73;  // m/s^2
 
-// For the value Filter
+// For the Filter
 const double ALPHA_INPUT = 0.5; // 1 consider only new data, 0 consider only previous data
 
 ControllerThread::ControllerThread(SharedData &aSharedData, Logger &aDataLogger, TaskWatch &aPeriodicTaskMonitor)
@@ -55,10 +55,10 @@ void ControllerThread::run()
 
         // Save the values in local variables
         mSharedData.mMutexSim.lock();
-        int actualId = mSharedData.mSimData.mId;
-        double distanceToLeaderRaw = mSharedData.mSimData.mDistanceToLeader;
-        double velocityLeaderRaw = mSharedData.mSimData.mVelocityLeader;
-        double egoSpeed = mSharedData.mSimData.mEgoSpeed;
+        int actualId = mSharedData.mId;
+        double distanceToLeaderRaw = mSharedData.mDistanceToLeader;
+        double velocityLeaderRaw = mSharedData.mVelocityLeader;
+        double egoSpeed = mSharedData.mEgoSpeed;
         mSharedData.mMutexSim.unlock();
 
         if (actualId > lastId)
@@ -67,6 +67,7 @@ void ControllerThread::run()
 
             bool hasLeader = (distanceToLeaderRaw > 0);
 
+            // Filters
             filteredDistanceToLeader = ALPHA_INPUT * distanceToLeaderRaw + (1 - ALPHA_INPUT) * lastDistanceLeader;
             filteredVelocityLeader = ALPHA_INPUT * velocityLeaderRaw + (1 - ALPHA_INPUT) * lastVelocityLeader;
 
@@ -79,22 +80,23 @@ void ControllerThread::run()
                 distanceToUse = filteredDistanceToLeader;
             }
             else
-            { // Since there is no leader and the distance is 0, we don't want to divide by 0. Therefore, we set the value to "infinity".
+            { // Since there isn't a leader, we don't want to divide by 0. Therefore, we set the value to "infinity".
                 distanceToUse = std::numeric_limits<double>::max();
             }
 
             // Model IDM
             acceleration = MAX_ACELERATION * (1 - std::pow(egoSpeed / mSpeed, 4) - std::pow(dinamicMinGap / distanceToUse, 2));
+            acceleration = std::clamp(acceleration, -MAX_DECELERATION, MAX_ACELERATION);
 
             mSharedData.mAcceleration.store(acceleration);
 
             mDataLogger.log({acceleration, egoSpeed, velocityLeaderRaw, distanceToLeaderRaw, dinamicMinGap, filteredVelocityLeader, filteredDistanceToLeader});
             mDataLogger.flush();
-        }
-        lastId = actualId;
 
-        lastDistanceLeader = filteredDistanceToLeader;
-        lastVelocityLeader = filteredVelocityLeader;
+            lastId = actualId;
+            lastDistanceLeader = filteredDistanceToLeader;
+            lastVelocityLeader = filteredVelocityLeader;
+        }
 
         // END of the function
         mTaskWatch.endCycle();

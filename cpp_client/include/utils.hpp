@@ -18,16 +18,6 @@
 
 using json = nlohmann::json;
 
-struct SimData
-{
-    size_t mId = 0;
-    double mEgoSpeed;
-    bool mTerminated;
-    bool mTruncated;
-    double mDistanceToLeader;
-    double mVelocityLeader;
-};
-
 // Helped by AI
 class Logger
 {
@@ -105,22 +95,28 @@ struct SharedData
 public:
     SharedData() {}
 
-    // Simulator Data
     std::mutex mMutexSim;
-    SimData mSimData;
+
+    // Simulator Data
+    size_t mId = 0;
+    double mEgoSpeed;
+    bool mTerminated;
+    bool mTruncated;
+    double mDistanceToLeader;
+    double mVelocityLeader;
 
     std::atomic<double> mAcceleration{0.0};
 
     void setAll(double aEgoSpeed, bool aTerminated, bool aTruncated, double aDistanceToLeader, double aVelocityLeader)
     {
-        mSimData.mEgoSpeed = aEgoSpeed;
-        mSimData.mTerminated = aTerminated;
-        mSimData.mTruncated = aTruncated;
-        mSimData.mDistanceToLeader = aDistanceToLeader;
-        mSimData.mVelocityLeader = aVelocityLeader;
+        mEgoSpeed = aEgoSpeed;
+        mTerminated = aTerminated;
+        mTruncated = aTruncated;
+        mDistanceToLeader = aDistanceToLeader;
+        mVelocityLeader = aVelocityLeader;
     }
 
-    void incrementID() { mSimData.mId++; }
+    void incrementID() { mId++; }
 };
 
 // Helped by AI
@@ -138,9 +134,9 @@ public:
         mSocket.connect("tcp://localhost:5555");
     }
 
-    json sendComandAndRecive(json msg)
+    json sendComandAndRecive(json aMsg)
     {
-        std::string s = msg.dump();
+        std::string s = aMsg.dump();
         auto tmpIgnore1 = mSocket.send(zmq::buffer(s), zmq::send_flags::none);
         zmq::message_t reply;
         auto tmpIgnore2 = mSocket.recv(reply, zmq::recv_flags::none);

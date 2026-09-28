@@ -42,7 +42,6 @@ void checkDeadlines(TaskWatch &aTaskWatch, const std::string aName)
 
     aTaskWatch.mMutex.unlock();
 
-
     auto period = aTaskWatch.getPeriod() * 1000.0; // Convert to millisecond
 
     // The two vectors have the same size
@@ -79,13 +78,14 @@ void SafteyThread::run()
         mTaskWatchSaftey.startCycle();
 
         mSharedData.mMutexSim.lock();
-        size_t actualId = mSharedData.mSimData.mId;
-        bool trucated = mSharedData.mSimData.mTruncated;
-        bool terminated = mSharedData.mSimData.mTerminated;
+        size_t actualId = mSharedData.mId;
+        bool trucated = mSharedData.mTruncated;
+        bool terminated = mSharedData.mTerminated;
         mSharedData.mMutexSim.unlock();
 
         if (actualId > lastId)
         {
+            // Check the Simulation
             if (trucated == true || terminated == true)
             { // Simulation died
                 std::cout << "Saftey: SIMULATION DIED " << trucated << " " << terminated << std::endl;
