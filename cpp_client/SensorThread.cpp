@@ -28,7 +28,7 @@ LeaderValues calculateVelocityAndDistanceToLeader(std::vector<VehicleAttr> &aVec
 {
     double minDistanceToLeader = std::numeric_limits<double>::max();
     double velocityLeader;
-    double egoYPos = aVectorVehicleAttr.at(0).mY;
+    double egoYPos = std::round(aVectorVehicleAttr.at(0).mY);
     double egoXPos = aVectorVehicleAttr.at(0).mX;
 
     for (int i = 1; i < aVectorVehicleAttr.size(); i++) // i = 1 because I exclude the ego pos

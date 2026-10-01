@@ -183,16 +183,16 @@ public:
     {
         mLastCycle = std::chrono::duration<double, std::milli>(Clock::now() - mStartTime);
 
-        mMutex.lock();
-        mVecPeriods.push_back(mLastPeriod.count());
-        mVecCycles.push_back(mLastCycle.count());
-        mMutex.unlock();
-
         // Log the data (skip the first log, because mLastPeriod will be not initialize)
         if (mHasStartedLogging)
         {
             mLogger.logCSV({mLastPeriod.count(), mLastCycle.count()});
             mLogger.flush();
+
+            mMutex.lock();
+            mVecPeriods.push_back(mLastPeriod.count());
+            mVecCycles.push_back(mLastCycle.count());
+            mMutex.unlock();
         }
         mHasStartedLogging = true;
     }

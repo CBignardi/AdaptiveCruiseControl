@@ -5,7 +5,7 @@ import numpy as np
 
 context = zmq.Context()
 socket = context.socket(zmq.REP)
-socket.bind("tcp://*:5555")
+socket.bind("tcp://localhost:5555")
 
 env = gym.make("highway-v0",
                 render_mode="human",
@@ -45,4 +45,6 @@ while True:
         socket.send_json({"ok": True})
         break
     
+socket.close()
+context.term()
 env.close()

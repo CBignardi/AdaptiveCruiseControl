@@ -71,18 +71,24 @@ void ControllerThread::run()
             filteredDistanceToLeader = ALPHA_INPUT * distanceToLeaderRaw + (1 - ALPHA_INPUT) * lastDistanceLeader;
             filteredVelocityLeader = ALPHA_INPUT * velocityLeaderRaw + (1 - ALPHA_INPUT) * lastVelocityLeader;
 
-            // Dinamic Minimum Gap
-            double dinamicMinGap = MIN_GAP + egoSpeed * TIME_GAP + ((egoSpeed * (egoSpeed - filteredVelocityLeader)) / (2 * std::sqrt(MAX_ACELERATION * MAX_DECELERATION)));
             double distanceToUse;
+            double speedToUse;
 
             if (hasLeader)
             {
                 distanceToUse = filteredDistanceToLeader;
+                speedToUse = filteredVelocityLeader;
             }
             else
-            { // Since there isn't a leader, we don't want to divide by 0. Therefore, we set the value to "infinity".
+            {
+                // Since there isn't a leader, we don't want to divide by 0. Therefore, we set the value to "infinity".
                 distanceToUse = std::numeric_limits<double>::max();
+                // In this way "delta V" is 0 (in the Dinamic Minimum Gap)
+                speedToUse = egoSpeed;
             }
+
+            // Dinamic Minimum Gap
+            double dinamicMinGap = MIN_GAP + (egoSpeed * TIME_GAP) + ((egoSpeed * (egoSpeed - speedToUse)) / (2 * std::sqrt(MAX_ACELERATION * MAX_DECELERATION)));
 
             // Model IDM
             acceleration = MAX_ACELERATION * (1 - std::pow(egoSpeed / mSpeed, 4) - std::pow(dinamicMinGap / distanceToUse, 2));
