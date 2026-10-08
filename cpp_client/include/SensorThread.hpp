@@ -4,12 +4,6 @@
 
 #include "utils.hpp"
 
-struct LeaderValues
-{
-    double mDistanceToLeader = 0;
-    double mSpeed = 0;
-};
-
 struct VehicleAttr
 {
 public:

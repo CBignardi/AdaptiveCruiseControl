@@ -24,7 +24,7 @@ void SensorThread::join()
     mThread.join();
 }
 
-LeaderValues calculateVelocityAndDistanceToLeader(std::vector<VehicleAttr> &aVectorVehicleAttr)
+void calculateVelocityAndDistanceToLeader(std::vector<VehicleAttr> &aVectorVehicleAttr, double &aDistanceToLeader, double &aVelocityLeader)
 {
     double minDistanceToLeader = std::numeric_limits<double>::max();
     double velocityLeader;
@@ -41,21 +41,18 @@ LeaderValues calculateVelocityAndDistanceToLeader(std::vector<VehicleAttr> &aVec
             continue;
         }
 
-        if (((actualVehicle.mX - egoXPos) < minDistanceToLeader))
+        if ((actualVehicle.mX - egoXPos) < minDistanceToLeader)
         {
             minDistanceToLeader = actualVehicle.mX - egoXPos;
             velocityLeader = actualVehicle.mVx;
         }
     }
 
-    LeaderValues retValue;
     if (minDistanceToLeader != std::numeric_limits<double>::max())
     {
-        retValue.mDistanceToLeader = minDistanceToLeader;
-        retValue.mSpeed = velocityLeader;
+        aDistanceToLeader = minDistanceToLeader;
+        aVelocityLeader = velocityLeader;
     }
-
-    return retValue;
 }
 
 void SensorThread::run()
@@ -93,22 +90,24 @@ void SensorThread::run()
         }
 
         double egoSpeed = vVehicleAttr.at(0).mVx;
-        LeaderValues leaderDistanceVelocity = calculateVelocityAndDistanceToLeader(vVehicleAttr);
+        double distanceToLeader = 0.0;
+        double velocityLeader = 0.0;
+        calculateVelocityAndDistanceToLeader(vVehicleAttr, distanceToLeader, velocityLeader);
 
         // Generate some noise in the values
         std::random_device rd;
         std::mt19937 generator(rd());
-        std::normal_distribution<double> dist(MEAN, STDDEV);
+        std::normal_distribution<double> noise(MEAN, STDDEV);
 
         // Add noise
-        if (leaderDistanceVelocity.mDistanceToLeader != 0)
+        if (distanceToLeader != 0)
         {
-            leaderDistanceVelocity.mDistanceToLeader += dist(generator);
-            leaderDistanceVelocity.mSpeed += dist(generator);
+            distanceToLeader += noise(generator);
+            velocityLeader += noise(generator);
         }
 
         mSharedData.mMutexSim.lock();
-        mSharedData.setAll(egoSpeed, resp["terminated"], resp["truncated"], leaderDistanceVelocity.mDistanceToLeader, leaderDistanceVelocity.mSpeed);
+        mSharedData.setAll(egoSpeed, resp["terminated"], resp["truncated"], distanceToLeader, velocityLeader);
         mSharedData.incrementID();
         mSharedData.mMutexSim.unlock();
 

@@ -20,9 +20,13 @@ env.unwrapped.config.update({
         "absolute": True,
         "normalize": False,
     },
-    "action": {"type": "ContinuousAction", "longitudinal": True, "lateral": False}, # Disable the steering
-    "simulation_frequency": 60,
-    "policy_frequency": 20,
+    "action": {
+        "type": "ContinuousAction",
+        "longitudinal": True,
+        "lateral": False    # Disable the steering
+    },
+    "simulation_frequency": 60, # Hz
+    "policy_frequency": 20, # Hz
     "vehicles_count": 15,
     "lanes_count": 3,
     "duration": 60, # [s] Max duration of the simulation

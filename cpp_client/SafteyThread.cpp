@@ -100,7 +100,6 @@ void SafteyThread::run()
             lastId = actualId;
         }
 
-        checkDeadlines(mTaskWatchSensor, "Sensor");
         checkDeadlines(mTaskWatchControl, "Control");
         checkDeadlines(mTaskWatchSaftey, "Saftey");
 
